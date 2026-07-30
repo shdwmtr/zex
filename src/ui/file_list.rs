@@ -53,9 +53,11 @@ fn resize_handle(
             });
             cx.new(|_| column_header::ResizeGhost)
         },
-        cx.listener(move |explorer, event: &DragMoveEvent<Column>, _window, cx| {
-            explorer.update_column_resize(f32::from(event.event.position.x), cx);
-        }),
+        cx.listener(
+            move |explorer, event: &DragMoveEvent<Column>, _window, cx| {
+                explorer.update_column_resize(f32::from(event.event.position.x), cx);
+            },
+        ),
         cx.listener(|explorer, _event: &MouseUpEvent, _window, cx| {
             explorer.end_column_resize(cx);
         }),
@@ -400,7 +402,9 @@ fn render_dir(explorer: &Explorer, cx: &Context<Explorer>) -> AnyElement {
                                                     .min_w(px(0.0))
                                                     .truncate()
                                                     .child(entry.name.clone());
-                                                if show_text_color
+                                                if entry.is_broken_symlink {
+                                                    name_div = name_div.text_color(theme::text_error());
+                                                } else if show_text_color
                                                     && let Some(color) = git_color
                                                 {
                                                     name_div = name_div.text_color(color);
@@ -702,6 +706,7 @@ fn render_trash(explorer: &Explorer, cx: &Context<Explorer>) -> AnyElement {
                                             is_dir: entry.is_dir,
                                             size: entry.size,
                                             modified: None,
+                                            ..Default::default()
                                         };
                                         let icon = icon_theme::svg_icon_for(&fake_entry, cx);
                                         let id_path = entry.id_path.clone();

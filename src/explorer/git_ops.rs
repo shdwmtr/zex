@@ -92,15 +92,14 @@ impl Explorer {
     }
 
     pub fn git_color_for(&self, status: GitFileStatus) -> Rgba {
-        let colors = &self.git_settings.status.colors;
         match status {
-            GitFileStatus::Modified => colors.modified.unwrap_or_else(theme::git_color_modified),
-            GitFileStatus::Added => colors.added.unwrap_or_else(theme::git_color_added),
-            GitFileStatus::Deleted => colors.deleted.unwrap_or_else(theme::git_color_deleted),
-            GitFileStatus::Renamed => colors.renamed.unwrap_or_else(theme::git_color_renamed),
-            GitFileStatus::Untracked => colors.untracked.unwrap_or_else(theme::git_color_untracked),
-            GitFileStatus::Ignored => colors.ignored.unwrap_or_else(theme::git_color_ignored),
-            GitFileStatus::Conflicted => colors.conflicted.unwrap_or_else(theme::git_color_conflicted),
+            GitFileStatus::Modified => theme::git_color_modified(),
+            GitFileStatus::Added => theme::git_color_added(),
+            GitFileStatus::Deleted => theme::git_color_deleted(),
+            GitFileStatus::Renamed => theme::git_color_renamed(),
+            GitFileStatus::Untracked => theme::git_color_untracked(),
+            GitFileStatus::Ignored => theme::git_color_ignored(),
+            GitFileStatus::Conflicted => theme::git_color_conflicted(),
         }
     }
 }

@@ -1,13 +1,15 @@
 use std::path::{Path, PathBuf};
 
 use gpui::{
-    AnyElement, App, ClickEvent, Context, IntoElement, KeyBinding, Window, actions, deferred, div,
-    prelude::*, px, svg,
+    AnyElement, App, ClickEvent, Context, Entity, IntoElement, KeyBinding, Window, actions,
+    deferred, div, prelude::*, px, svg,
 };
 
 use crate::app::assets;
 use crate::explorer::Explorer;
 use crate::theme;
+use crate::ui::context_menu;
+use crate::ui::popup_menu::ContextMenuExt;
 use crate::ui::text_input::{Escape, TextInput as Input};
 
 actions!(zex_path_bar, [CompletePath, SuggestionUp, SuggestionDown]);
@@ -31,6 +33,7 @@ fn nav_button(
     icon_asset: &str,
     enabled: bool,
     direction: NavDirection,
+    explorer_entity: &Entity<Explorer>,
     cx: &Context<Explorer>,
 ) -> AnyElement {
     let color = if enabled {
@@ -54,6 +57,15 @@ fn nav_button(
                 .text_color(color),
         );
 
+    let history_entity = explorer_entity.clone();
+    let history_menu = move |menu, window: &mut Window, cx: &mut Context<_>| {
+        let entries = match direction {
+            NavDirection::Back => history_entity.read(cx).back_history_entries(),
+            NavDirection::Forward => history_entity.read(cx).forward_history_entries(),
+        };
+        context_menu::history_menu(history_entity.clone(), entries, menu, window, cx)
+    };
+
     if enabled {
         button
             .cursor_pointer()
@@ -64,9 +76,10 @@ fn nav_button(
                     NavDirection::Forward => explorer.go_forward(cx),
                 }),
             )
+            .context_menu(history_menu)
             .into_any_element()
     } else {
-        button.into_any_element()
+        button.context_menu(history_menu).into_any_element()
     }
 }
 
@@ -252,6 +265,7 @@ fn suggestions_popup(
 }
 
 pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoElement {
+    let entity = cx.entity();
     let is_disk_usage = explorer.disk_usage.is_some();
     let can_go_up = explorer
         .disk_usage
@@ -310,6 +324,7 @@ pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoElement {
                 "icons/chevron-left.svg",
                 explorer.can_go_back(),
                 NavDirection::Back,
+                &entity,
                 cx,
             ))
             .child(nav_button(
@@ -317,6 +332,7 @@ pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoElement {
                 "icons/chevron-right.svg",
                 explorer.can_go_forward(),
                 NavDirection::Forward,
+                &entity,
                 cx,
             ))
         })

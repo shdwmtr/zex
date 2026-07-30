@@ -41,8 +41,6 @@ pub fn render(explorer: &Explorer, tree: Arc<DiskUsageTree>, root_id: NodeId, cx
     let visible = visible_rows(&tree, root_id, sort);
     let row_count = visible.len();
 
-    let list_resize_active = state.list_resize_drag.is_some();
-
     let row_entity = entity.clone();
 
     div()
@@ -95,7 +93,6 @@ pub fn render(explorer: &Explorer, tree: Arc<DiskUsageTree>, root_id: NodeId, cx
                 widths.get(DiskUsageColumn::Modified),
             ],
         ))
-        .child(list_resize_handle(list_resize_active, entity, cx))
 }
 
 fn visible_rows(tree: &DiskUsageTree, root_id: NodeId, sort: (DiskUsageSortColumn, SortDirection)) -> Vec<NodeId> {
@@ -319,7 +316,12 @@ fn resizable_header_cell(
         ))
 }
 
-fn list_resize_handle(active: bool, entity: Entity<Explorer>, cx: &Context<Explorer>) -> impl IntoElement {
+pub fn list_resize_handle(
+    list_width: f32,
+    active: bool,
+    entity: Entity<Explorer>,
+    cx: &Context<Explorer>,
+) -> impl IntoElement {
     let drag_entity = entity;
 
     div()
@@ -327,8 +329,9 @@ fn list_resize_handle(active: bool, entity: Entity<Explorer>, cx: &Context<Explo
         .absolute()
         .top_0()
         .bottom_0()
-        .right(px(-RESIZE_HIT_WIDTH / 2.0))
+        .left(px(list_width - RESIZE_HIT_WIDTH / 2.0))
         .w(px(RESIZE_HIT_WIDTH))
+        .occlude()
         .flex()
         .justify_center()
         .cursor_col_resize()

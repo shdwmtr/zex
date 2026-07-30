@@ -12,7 +12,7 @@ use crate::theme;
 use crate::theme::icon_theme;
 use crate::ui::scrollbar::Scrollbar;
 
-const RESIZE_HIT_WIDTH: f32 = 9.0;
+const RESIZE_HIT_WIDTH: f32 = 17.0;
 
 struct SidebarResizeGhost;
 
@@ -22,8 +22,9 @@ impl Render for SidebarResizeGhost {
     }
 }
 
-fn resize_handle(
+pub fn resize_handle(
     explorer: Entity<Explorer>,
+    sidebar_width: f32,
     active: bool,
     cx: &Context<Explorer>,
 ) -> impl IntoElement {
@@ -34,8 +35,9 @@ fn resize_handle(
         .absolute()
         .top_0()
         .bottom_0()
-        .right(px(-RESIZE_HIT_WIDTH / 2.0))
+        .left(px(sidebar_width - RESIZE_HIT_WIDTH / 2.0))
         .w(px(RESIZE_HIT_WIDTH))
+        .occlude()
         .flex()
         .justify_center()
         .cursor_col_resize()
@@ -101,7 +103,6 @@ fn rows(sidebar_entries: &[SidebarItem]) -> Vec<Row> {
 
 pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoElement {
     let entity = cx.entity();
-    let active = explorer.sidebar_resize_drag.is_some();
     let scroll_handle = explorer.sidebar_scroll_handle.clone();
 
     div()
@@ -115,7 +116,6 @@ pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoElement {
         .bg(theme::bg_panel())
         .border_r_1()
         .border_color(theme::border())
-        .child(resize_handle(entity.clone(), active, cx))
         .child(
             div()
                 .id("sidebar-rows")

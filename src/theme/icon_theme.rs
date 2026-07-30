@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use gpui::{
-    AnyElement, App, DevicePixels, Global, IntoElement, Pixels, SharedString, Size, SvgSize, img,
-    prelude::*, px, svg,
+    AnyElement, App, DevicePixels, Global, IntoElement, Pixels, SharedString, Size, SvgSize, div,
+    img, prelude::*, px, svg,
 };
 use serde::Deserialize;
 
@@ -447,8 +447,46 @@ pub fn rasterize_drag_icon(
     }
 }
 
+fn symlink_badge_icon_path() -> PathBuf {
+    crate::app::assets::assets_dir().join("icons/symlink-badge.svg")
+}
+
+fn with_symlink_badge(icon: AnyElement, entry: &FsEntry, size: Pixels) -> AnyElement {
+    if !entry.is_symlink {
+        return icon;
+    }
+
+    let badge_size = size * 0.55;
+
+    div()
+        .relative()
+        .size(size)
+        .flex_shrink_0()
+        .child(icon)
+        .child(
+            div()
+                .absolute()
+                .top_0()
+                .left_0()
+                .size(badge_size)
+                .flex()
+                .items_center()
+                .justify_center()
+                .rounded_full()
+                .bg(super::bg_panel())
+                .child(
+                    svg()
+                        .path(symlink_badge_icon_path().to_string_lossy().into_owned())
+                        .size(badge_size * 0.7)
+                        .text_color(super::text_primary()),
+                ),
+        )
+        .into_any_element()
+}
+
 pub fn svg_icon_for(entry: &FsEntry, cx: &App) -> AnyElement {
-    render_icon(cx.global::<IconThemeState>().icon_for(entry), px(16.0))
+    let icon = render_icon(cx.global::<IconThemeState>().icon_for(entry), px(16.0));
+    with_symlink_badge(icon, entry, px(16.0))
 }
 
 pub fn directory_svg_icon(cx: &App) -> AnyElement {
@@ -460,7 +498,8 @@ pub fn generic_file_svg_icon(cx: &App) -> AnyElement {
 }
 
 pub fn svg_icon_for_size(entry: &FsEntry, size: Pixels, cx: &App) -> AnyElement {
-    render_icon(cx.global::<IconThemeState>().icon_for(entry), size)
+    let icon = render_icon(cx.global::<IconThemeState>().icon_for(entry), size);
+    with_symlink_badge(icon, entry, size)
 }
 
 pub fn directory_svg_icon_size(size: Pixels, cx: &App) -> AnyElement {
@@ -599,6 +638,7 @@ mod tests {
             is_dir: false,
             size: 0,
             modified: None,
+            ..Default::default()
         };
 
         let icon = state.icon_for(&entry);
@@ -662,6 +702,7 @@ mod tests {
             is_dir: false,
             size: 0,
             modified: None,
+            ..Default::default()
         };
 
         let icon = state.icon_for(&entry);
@@ -696,6 +737,7 @@ mod tests {
             is_dir: true,
             size: 0,
             modified: None,
+            ..Default::default()
         };
 
         let icon = state.icon_for(&entry);

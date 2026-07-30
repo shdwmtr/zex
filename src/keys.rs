@@ -5,6 +5,7 @@ actions!(
     [
         SelectAll,
         ToggleHidden,
+        ToggleSidebar,
         Rename,
         Delete,
         Copy,
@@ -28,6 +29,7 @@ pub fn init(cx: &mut App) {
     cx.bind_keys([
         KeyBinding::new("ctrl-a", SelectAll, Some("Explorer")),
         KeyBinding::new("ctrl-h", ToggleHidden, Some("Explorer")),
+        KeyBinding::new("ctrl-b", ToggleSidebar, Some("Explorer")),
         KeyBinding::new("f2", Rename, Some("Explorer")),
         KeyBinding::new("delete", Delete, Some("Explorer")),
         KeyBinding::new("ctrl-c", Copy, Some("Explorer")),

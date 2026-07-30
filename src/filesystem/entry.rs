@@ -3,13 +3,15 @@ use std::time::SystemTime;
 
 use rayon::prelude::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct FsEntry {
     pub name: String,
     pub path: PathBuf,
     pub is_dir: bool,
     pub size: u64,
     pub modified: Option<SystemTime>,
+    pub is_symlink: bool,
+    pub is_broken_symlink: bool,
 }
 
 pub fn read_dir_sorted(dir: &Path, show_hidden: bool) -> std::io::Result<Vec<FsEntry>> {
@@ -21,13 +23,22 @@ pub fn read_dir_sorted(dir: &Path, show_hidden: bool) -> std::io::Result<Vec<FsE
     let mut entries: Vec<FsEntry> = dir_entries
         .into_par_iter()
         .filter_map(|entry| {
-            let metadata = entry.metadata().ok()?;
+            let link_metadata = entry.metadata().ok()?;
+            let path = entry.path();
+            let is_symlink = link_metadata.is_symlink();
+
+            let target_metadata = is_symlink.then(|| std::fs::metadata(&path).ok()).flatten();
+            let is_broken_symlink = is_symlink && target_metadata.is_none();
+            let metadata = target_metadata.as_ref().unwrap_or(&link_metadata);
+
             Some(FsEntry {
                 name: entry.file_name().to_string_lossy().into_owned(),
-                path: entry.path(),
+                path,
                 is_dir: metadata.is_dir(),
                 size: metadata.len(),
                 modified: metadata.modified().ok(),
+                is_symlink,
+                is_broken_symlink,
             })
         })
         .collect();
@@ -66,6 +77,9 @@ pub fn sort_entries(
 }
 
 pub fn type_label(entry: &FsEntry) -> String {
+    if entry.is_broken_symlink {
+        return "Broken Link".to_string();
+    }
     type_label_for(&entry.name, entry.is_dir)
 }
 
@@ -149,6 +163,63 @@ mod tests {
             names,
             vec!["Beta_dir", "zeta_dir", "Alpha_file.txt", "beta_file.txt"]
         );
+
+        fs::remove_dir_all(&tmp).unwrap();
+    }
+
+    #[test]
+    fn symlink_to_directory_is_treated_as_a_directory() {
+        let tmp = std::env::temp_dir().join(format!("zex_symlink_dir_test_{}", std::process::id()));
+        fs::create_dir_all(&tmp).unwrap();
+
+        fs::create_dir(tmp.join("real_dir")).unwrap();
+        std::os::unix::fs::symlink(tmp.join("real_dir"), tmp.join("link_to_dir")).unwrap();
+
+        let entries = read_dir_sorted(&tmp, true).unwrap();
+        let link = entries.iter().find(|e| e.name == "link_to_dir").unwrap();
+
+        assert!(link.is_dir);
+        assert!(link.is_symlink);
+        assert!(!link.is_broken_symlink);
+
+        fs::remove_dir_all(&tmp).unwrap();
+    }
+
+    #[test]
+    fn symlink_to_file_reports_target_size_not_link_size() {
+        let tmp =
+            std::env::temp_dir().join(format!("zex_symlink_file_test_{}", std::process::id()));
+        fs::create_dir_all(&tmp).unwrap();
+
+        fs::write(tmp.join("real_file.txt"), b"hello world").unwrap();
+        std::os::unix::fs::symlink(tmp.join("real_file.txt"), tmp.join("link_to_file")).unwrap();
+
+        let entries = read_dir_sorted(&tmp, true).unwrap();
+        let link = entries.iter().find(|e| e.name == "link_to_file").unwrap();
+
+        assert!(!link.is_dir);
+        assert!(link.is_symlink);
+        assert!(!link.is_broken_symlink);
+        assert_eq!(link.size, "hello world".len() as u64);
+
+        fs::remove_dir_all(&tmp).unwrap();
+    }
+
+    #[test]
+    fn broken_symlink_is_flagged_and_not_navigable_as_a_directory() {
+        let tmp =
+            std::env::temp_dir().join(format!("zex_symlink_broken_test_{}", std::process::id()));
+        fs::create_dir_all(&tmp).unwrap();
+
+        std::os::unix::fs::symlink(tmp.join("does_not_exist"), tmp.join("dangling_link")).unwrap();
+
+        let entries = read_dir_sorted(&tmp, true).unwrap();
+        let link = entries.iter().find(|e| e.name == "dangling_link").unwrap();
+
+        assert!(!link.is_dir);
+        assert!(link.is_symlink);
+        assert!(link.is_broken_symlink);
+        assert_eq!(type_label(link), "Broken Link");
 
         fs::remove_dir_all(&tmp).unwrap();
     }

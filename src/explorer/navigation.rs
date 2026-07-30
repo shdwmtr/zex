@@ -62,9 +62,30 @@ impl Explorer {
         self.rebuild_entry_index();
         self.selected.clear();
         self.focused_path = None;
-        self.free_space_label = Self::compute_free_space_label(&dir);
         self.trash_entries.clear();
         self.trash_entry_index.clear();
+    }
+
+    pub(super) fn refresh_free_space(&mut self, cx: &mut Context<Self>) {
+        self.free_space_task = None;
+
+        if self.is_trash() {
+            self.free_space_label = String::new();
+            return;
+        }
+
+        let dir = self.history.current().to_path_buf();
+        self.free_space_task = Some(cx.spawn(async move |weak, cx| {
+            let label = cx
+                .background_executor()
+                .spawn(async move { Self::compute_free_space_label(&dir) })
+                .await;
+
+            let _ = weak.update(cx, |explorer, cx| {
+                explorer.free_space_label = label;
+                cx.notify();
+            });
+        }));
     }
 
     pub(super) fn rebuild_entry_index(&mut self) {
@@ -85,6 +106,7 @@ impl Explorer {
         } else {
             self.watch_current_dir(cx);
         }
+        self.refresh_free_space(cx);
         self.refresh_git(cx);
         self.start_git_poll(cx);
     }
@@ -160,6 +182,15 @@ impl Explorer {
         cx.notify();
     }
 
+    pub fn sidebar_should_render(&self) -> bool {
+        self.sidebar_visible && !self.sidebar_entries.is_empty()
+    }
+
+    pub fn toggle_sidebar(&mut self, cx: &mut Context<Self>) {
+        self.sidebar_visible = !self.sidebar_visible;
+        cx.notify();
+    }
+
     pub fn navigate_to(&mut self, path: PathBuf, cx: &mut Context<Self>) {
         if self.history.navigate(path) {
             self.enter_directory(cx);
@@ -191,6 +222,27 @@ impl Explorer {
         }
     }
 
+    pub fn back_history_entries(&self) -> Vec<(usize, PathBuf)> {
+        self.history
+            .back_entries()
+            .map(|(ix, path)| (ix, path.to_path_buf()))
+            .collect()
+    }
+
+    pub fn forward_history_entries(&self) -> Vec<(usize, PathBuf)> {
+        self.history
+            .forward_entries()
+            .map(|(ix, path)| (ix, path.to_path_buf()))
+            .collect()
+    }
+
+    pub fn go_to_history_entry(&mut self, index: usize, cx: &mut Context<Self>) {
+        if self.history.jump_to(index) {
+            self.enter_directory(cx);
+            cx.notify();
+        }
+    }
+
     pub fn open_entry(&mut self, path: &Path, cx: &mut Context<Self>) {
         if self.is_trash() {
             return;
@@ -198,6 +250,12 @@ impl Explorer {
         let Some(&ix) = self.entry_index.get(path) else {
             return;
         };
+        if self.entries[ix].is_broken_symlink {
+            let path = self.entries[ix].path.clone();
+            self.op_error = Some(format!("Broken symbolic link: {}", path.display()));
+            cx.notify();
+            return;
+        }
         if self.entries[ix].is_dir {
             let path = self.entries[ix].path.clone();
             self.navigate_to(path, cx);

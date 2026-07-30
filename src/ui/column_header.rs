@@ -85,6 +85,7 @@ pub fn resize_handle<T: Clone + 'static>(
         .bottom_0()
         .left(px(-RESIZE_HIT_WIDTH / 2.0))
         .w(px(RESIZE_HIT_WIDTH))
+        .occlude()
         .cursor_col_resize()
         .on_drag(value, on_drag_start)
         .on_drag_move::<T>(on_drag_move)

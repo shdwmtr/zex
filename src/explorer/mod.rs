@@ -85,6 +85,7 @@ pub struct Explorer {
     pub selected: FxHashSet<PathBuf>,
     pub focused_path: Option<PathBuf>,
     pub show_hidden: bool,
+    pub sidebar_visible: bool,
     pub error: Option<String>,
     pub op_error: Option<String>,
     pub focus_handle: FocusHandle,
@@ -113,6 +114,7 @@ pub struct Explorer {
     redo_stack: Vec<UndoOp>,
     watcher: Option<notify::RecommendedWatcher>,
     watch_task: Option<Task<()>>,
+    free_space_task: Option<Task<()>>,
     pub git_settings: GitSettings,
     pub git_snapshot: Option<GitSnapshot>,
     git_task: Option<Task<()>>,
@@ -126,6 +128,7 @@ impl Explorer {
         window: &mut Window,
         cx: &mut Context<Self>,
         show_hidden: bool,
+        sidebar_visible: bool,
         sidebar_entries: Vec<SidebarItem>,
         git_settings: GitSettings,
         disk_usage_settings: DiskUsageSettings,
@@ -146,6 +149,7 @@ impl Explorer {
             selected: FxHashSet::default(),
             focused_path: None,
             show_hidden,
+            sidebar_visible,
             error: None,
             op_error: None,
             focus_handle,
@@ -174,6 +178,7 @@ impl Explorer {
             redo_stack: Vec::new(),
             watcher: None,
             watch_task: None,
+            free_space_task: None,
             git_settings,
             git_snapshot: None,
             git_task: None,
@@ -233,6 +238,11 @@ impl Explorer {
                     explorer.toggle_hidden(cx)
                 }),
             )
+            .on_action(
+                cx.listener(|explorer, _: &keys::ToggleSidebar, _window, cx| {
+                    explorer.toggle_sidebar(cx)
+                }),
+            )
             .on_action(cx.listener(|explorer, _: &keys::Rename, window, cx| {
                 if let Some(path) = explorer.focused_path.clone() {
                     explorer.begin_rename(path, window, cx);
@@ -264,7 +274,9 @@ impl Explorer {
             .flex_row()
             .bg(theme::bg_root())
             .text_color(theme::text_primary())
-            .child(sidebar::render(self, cx))
+            .when(self.sidebar_should_render(), |this| {
+                this.child(sidebar::render(self, cx))
+            })
             .child(
                 div()
                     .flex()
@@ -274,20 +286,22 @@ impl Explorer {
                     .child(path_bar::render(self, cx))
                     .children(self.op_error.as_ref().map(|message| {
                         div()
+                            .relative()
                             .w_full()
-                            .flex()
-                            .flex_row()
-                            .items_center()
-                            .justify_between()
-                            .gap_2()
-                            .px_3()
-                            .py_1()
-                            .bg(theme::bg_error())
-                            .text_color(theme::text_error())
-                            .child(message.clone())
+                            .py_2()
+                            .pl_3()
+                            .pr_8()
+                            .bg(theme::bg_on_error())
+                            .border_1()
+                            .border_color(theme::text_error())
+                            .text_color(theme::text_on_error())
+                            .child(div().whitespace_normal().child(message.clone()))
                             .child(
                                 div()
                                     .id("dismiss-op-error")
+                                    .absolute()
+                                    .top_1()
+                                    .right_1()
                                     .cursor_pointer()
                                     .px_2()
                                     .on_click(cx.listener(|explorer, _, _, cx| {
@@ -299,6 +313,14 @@ impl Explorer {
                     .child(file_list::render(self, cx))
                     .child(status_bar::render(self, cx)),
             )
+            .when(self.sidebar_should_render(), |this| {
+                this.child(sidebar::resize_handle(
+                    cx.entity(),
+                    self.sidebar_width,
+                    self.sidebar_resize_drag.is_some(),
+                    cx,
+                ))
+            })
             .children(warning_dialog::render(self, cx))
             .children(bulk_progress::render(self, cx))
             .children(properties_window::render(self, cx))

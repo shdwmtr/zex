@@ -1,7 +1,7 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use gpui::Rgba;
 use serde::Deserialize;
+use serde_json::Value;
 
 #[derive(Deserialize, Default, Debug, PartialEq)]
 pub struct Settings {
@@ -10,12 +10,32 @@ pub struct Settings {
     pub ui_font_size: Option<f32>,
     pub ui_font_weight: Option<f32>,
     pub show_hidden_files: Option<bool>,
+    pub sidebar_visible: Option<bool>,
     #[serde(default)]
     pub sidebar: Vec<SidebarItem>,
     #[serde(default)]
     pub git: GitSettings,
     #[serde(default)]
     pub disk_usage: DiskUsageSettings,
+    #[serde(default)]
+    pub theme: ThemeSettings,
+}
+
+#[derive(Deserialize, Default, Debug, Clone, PartialEq)]
+#[serde(default)]
+pub struct ThemeSettings {
+    pub mode: ThemeMode,
+    pub light: Option<String>,
+    pub dark: Option<String>,
+}
+
+#[derive(Deserialize, Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ThemeMode {
+    #[default]
+    Dark,
+    Light,
+    System,
 }
 
 #[derive(Deserialize, Default, Debug, Clone, PartialEq)]
@@ -45,7 +65,6 @@ pub struct GitStatusSettings {
     pub dim_ignored: bool,
     pub aggregate_folders: bool,
     pub badge_style: GitBadgeStyle,
-    pub colors: GitStatusColors,
 }
 
 impl Default for GitStatusSettings {
@@ -57,21 +76,8 @@ impl Default for GitStatusSettings {
             dim_ignored: true,
             aggregate_folders: true,
             badge_style: GitBadgeStyle::TextColor,
-            colors: GitStatusColors::default(),
         }
     }
-}
-
-#[derive(Deserialize, Default, Debug, Clone, PartialEq)]
-#[serde(default)]
-pub struct GitStatusColors {
-    pub modified: Option<Rgba>,
-    pub added: Option<Rgba>,
-    pub deleted: Option<Rgba>,
-    pub renamed: Option<Rgba>,
-    pub untracked: Option<Rgba>,
-    pub ignored: Option<Rgba>,
-    pub conflicted: Option<Rgba>,
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
@@ -164,13 +170,173 @@ fn config_dir() -> PathBuf {
         })
 }
 
+fn home_dir() -> PathBuf {
+    std::env::var("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("/"))
+}
+
+fn default_zed_settings_path() -> PathBuf {
+    config_dir().join("zed").join("settings.json")
+}
+
+fn expand_tilde(path: &str) -> PathBuf {
+    if let Some(rest) = path.strip_prefix("~/") {
+        return home_dir().join(rest);
+    }
+    if path == "~" {
+        return home_dir();
+    }
+    PathBuf::from(path)
+}
+
+fn resolve_inherit_path(zex_value: &Value) -> Option<PathBuf> {
+    match zex_value.get("inherit_from_zed")? {
+        Value::Bool(true) => Some(default_zed_settings_path()),
+        Value::String(path) => Some(expand_tilde(path)),
+        _ => None,
+    }
+}
+
+fn strip_json_comments(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut chars = input.chars().peekable();
+    let mut in_string = false;
+
+    while let Some(c) = chars.next() {
+        if in_string {
+            out.push(c);
+            if c == '\\' {
+                if let Some(escaped) = chars.next() {
+                    out.push(escaped);
+                }
+            } else if c == '"' {
+                in_string = false;
+            }
+            continue;
+        }
+
+        match c {
+            '"' => {
+                in_string = true;
+                out.push(c);
+            }
+            '/' if chars.peek() == Some(&'/') => {
+                chars.next();
+                for c in chars.by_ref() {
+                    if c == '\n' {
+                        out.push(c);
+                        break;
+                    }
+                }
+            }
+            '/' if chars.peek() == Some(&'*') => {
+                chars.next();
+                let mut prev = '\0';
+                for c in chars.by_ref() {
+                    if prev == '*' && c == '/' {
+                        break;
+                    }
+                    prev = c;
+                }
+            }
+            _ => out.push(c),
+        }
+    }
+
+    out
+}
+
+fn strip_trailing_commas(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut chars = input.chars().peekable();
+    let mut in_string = false;
+
+    while let Some(c) = chars.next() {
+        if in_string {
+            out.push(c);
+            if c == '\\' {
+                if let Some(escaped) = chars.next() {
+                    out.push(escaped);
+                }
+            } else if c == '"' {
+                in_string = false;
+            }
+            continue;
+        }
+
+        match c {
+            '"' => {
+                in_string = true;
+                out.push(c);
+            }
+            ',' => {
+                let mut lookahead = chars.clone();
+                let mut precedes_closer = false;
+                while let Some(&next) = lookahead.peek() {
+                    if next.is_whitespace() {
+                        lookahead.next();
+                        continue;
+                    }
+                    precedes_closer = next == '}' || next == ']';
+                    break;
+                }
+                if !precedes_closer {
+                    out.push(c);
+                }
+            }
+            _ => out.push(c),
+        }
+    }
+
+    out
+}
+
+fn parse_jsonc(contents: &str) -> serde_json::Result<Value> {
+    let without_comments = strip_json_comments(contents);
+    let without_trailing_commas = strip_trailing_commas(&without_comments);
+    serde_json::from_str(&without_trailing_commas)
+}
+
+fn merge_json(base: &mut Value, overlay: Value) {
+    match overlay {
+        Value::Object(overlay_map) => {
+            if let Value::Object(base_map) = base {
+                for (key, value) in overlay_map {
+                    match base_map.get_mut(&key) {
+                        Some(existing) => merge_json(existing, value),
+                        None => {
+                            base_map.insert(key, value);
+                        }
+                    }
+                }
+            } else {
+                *base = Value::Object(overlay_map);
+            }
+        }
+        other => *base = other,
+    }
+}
+
+fn read_jsonc_file(path: &Path) -> Option<Value> {
+    let contents = std::fs::read_to_string(path).ok()?;
+    parse_jsonc(&contents).ok()
+}
+
 pub fn load() -> Settings {
     let path = config_dir().join("zex").join("config.json");
 
-    std::fs::read_to_string(&path)
-        .ok()
-        .and_then(|contents| serde_json::from_str(&contents).ok())
-        .unwrap_or_default()
+    let zex_value = read_jsonc_file(&path).unwrap_or_else(|| Value::Object(Default::default()));
+
+    let merged = match resolve_inherit_path(&zex_value).and_then(|path| read_jsonc_file(&path)) {
+        Some(mut zed_value) => {
+            merge_json(&mut zed_value, zex_value);
+            zed_value
+        }
+        None => zex_value,
+    };
+
+    serde_json::from_value(merged).unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -198,6 +364,7 @@ mod tests {
         assert_eq!(settings.ui_font_size, None);
         assert_eq!(settings.ui_font_weight, None);
         assert_eq!(settings.show_hidden_files, None);
+        assert_eq!(settings.sidebar_visible, None);
         assert_eq!(settings.sidebar, Vec::<SidebarItem>::new());
     }
 
@@ -230,6 +397,15 @@ mod tests {
         let settings: Settings = serde_json::from_str(contents).unwrap();
 
         assert_eq!(settings.show_hidden_files, Some(true));
+    }
+
+    #[test]
+    fn parses_sidebar_visible_field() {
+        let contents = r#"{ "sidebar_visible": false }"#;
+
+        let settings: Settings = serde_json::from_str(contents).unwrap();
+
+        assert_eq!(settings.sidebar_visible, Some(false));
     }
 
     #[test]
@@ -316,7 +492,6 @@ mod tests {
         assert!(settings.git.status.dim_ignored);
         assert!(settings.git.status.aggregate_folders);
         assert_eq!(settings.git.status.badge_style, GitBadgeStyle::TextColor);
-        assert_eq!(settings.git.status.colors, GitStatusColors::default());
         assert!(settings.git.branch.enabled);
         assert!(settings.git.branch.show_in_status_bar);
         assert!(settings.git.branch.show_dirty_indicator);
@@ -384,29 +559,6 @@ mod tests {
     }
 
     #[test]
-    fn git_custom_colors_parse_hex_strings() {
-        let contents = r##"{
-            "git": {
-                "status": {
-                    "colors": {
-                        "modified": "#ffaa00",
-                        "conflicted": "#ff0000ff"
-                    }
-                }
-            }
-        }"##;
-
-        let settings: Settings = serde_json::from_str(contents).unwrap();
-
-        assert_eq!(settings.git.status.colors.modified, Rgba::try_from("#ffaa00").ok());
-        assert_eq!(
-            settings.git.status.colors.conflicted,
-            Rgba::try_from("#ff0000ff").ok()
-        );
-        assert_eq!(settings.git.status.colors.added, None);
-    }
-
-    #[test]
     fn disk_usage_defaults_to_safe_values_when_omitted() {
         let settings: Settings = serde_json::from_str("{}").unwrap();
 
@@ -427,5 +579,187 @@ mod tests {
 
         assert!(settings.disk_usage.cross_filesystem_boundaries);
         assert!(settings.disk_usage.follow_symlinks);
+    }
+
+    #[test]
+    fn theme_defaults_to_dark_mode_with_no_names_when_omitted() {
+        let settings: Settings = serde_json::from_str("{}").unwrap();
+
+        assert_eq!(settings.theme.mode, ThemeMode::Dark);
+        assert_eq!(settings.theme.light, None);
+        assert_eq!(settings.theme.dark, None);
+    }
+
+    #[test]
+    fn theme_parses_mode_and_names() {
+        let contents = r#"{
+            "theme": {
+                "mode": "dark",
+                "light": "VSCode Light Modern",
+                "dark": "VSCode Dark Modern"
+            }
+        }"#;
+
+        let settings: Settings = serde_json::from_str(contents).unwrap();
+
+        assert_eq!(settings.theme.mode, ThemeMode::Dark);
+        assert_eq!(settings.theme.light.as_deref(), Some("VSCode Light Modern"));
+        assert_eq!(settings.theme.dark.as_deref(), Some("VSCode Dark Modern"));
+    }
+
+    #[test]
+    fn theme_mode_parses_light_and_system() {
+        let light: Settings = serde_json::from_str(r#"{ "theme": { "mode": "light" } }"#).unwrap();
+        let system: Settings =
+            serde_json::from_str(r#"{ "theme": { "mode": "system" } }"#).unwrap();
+
+        assert_eq!(light.theme.mode, ThemeMode::Light);
+        assert_eq!(system.theme.mode, ThemeMode::System);
+    }
+
+    #[test]
+    fn parse_jsonc_strips_line_and_block_comments() {
+        let contents = r#"{
+            // top-level comment
+            "icon_theme": "Foo", /* inline */ "ui_font_size": 15.0
+        }"#;
+
+        let value = parse_jsonc(contents).unwrap();
+
+        assert_eq!(value["icon_theme"], "Foo");
+        assert_eq!(value["ui_font_size"], 15.0);
+    }
+
+    #[test]
+    fn parse_jsonc_strips_trailing_commas() {
+        let contents = r#"{
+            "sidebar": [
+                { "name": "A", "path": "/a", },
+                { "name": "B", "path": "/b" },
+            ],
+        }"#;
+
+        let value = parse_jsonc(contents).unwrap();
+
+        assert_eq!(value["sidebar"].as_array().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn parse_jsonc_leaves_commas_and_slashes_inside_strings_untouched() {
+        let contents = r#"{ "ui_font_family": "A, B // not a comment, /* also not */" }"#;
+
+        let value = parse_jsonc(contents).unwrap();
+
+        assert_eq!(value["ui_font_family"], "A, B // not a comment, /* also not */");
+    }
+
+    #[test]
+    fn merge_json_overlays_scalars_and_deep_merges_nested_objects() {
+        let mut base: Value = serde_json::from_str(
+            r#"{
+                "icon_theme": "Zed Icons",
+                "theme": { "mode": "dark", "light": "A", "dark": "B" }
+            }"#,
+        )
+        .unwrap();
+        let overlay: Value =
+            serde_json::from_str(r#"{ "theme": { "light": "Overridden" } }"#).unwrap();
+
+        merge_json(&mut base, overlay);
+
+        assert_eq!(base["icon_theme"], "Zed Icons");
+        assert_eq!(base["theme"]["mode"], "dark");
+        assert_eq!(base["theme"]["light"], "Overridden");
+        assert_eq!(base["theme"]["dark"], "B");
+    }
+
+    #[test]
+    fn merge_json_overlay_array_replaces_base_array_wholesale() {
+        let mut base: Value = serde_json::from_str(r#"{ "sidebar": [1, 2, 3] }"#).unwrap();
+        let overlay: Value = serde_json::from_str(r#"{ "sidebar": [4] }"#).unwrap();
+
+        merge_json(&mut base, overlay);
+
+        assert_eq!(base["sidebar"], serde_json::json!([4]));
+    }
+
+    #[test]
+    fn resolve_inherit_path_true_uses_default_zed_settings_path() {
+        let value: Value = serde_json::from_str(r#"{ "inherit_from_zed": true }"#).unwrap();
+
+        assert_eq!(resolve_inherit_path(&value), Some(default_zed_settings_path()));
+    }
+
+    #[test]
+    fn resolve_inherit_path_false_or_absent_disables_inheritance() {
+        let disabled: Value = serde_json::from_str(r#"{ "inherit_from_zed": false }"#).unwrap();
+        let absent: Value = serde_json::from_str("{}").unwrap();
+
+        assert_eq!(resolve_inherit_path(&disabled), None);
+        assert_eq!(resolve_inherit_path(&absent), None);
+    }
+
+    #[test]
+    fn resolve_inherit_path_string_expands_tilde() {
+        let value: Value =
+            serde_json::from_str(r#"{ "inherit_from_zed": "~/custom/zed-settings.json" }"#)
+                .unwrap();
+
+        assert_eq!(
+            resolve_inherit_path(&value),
+            Some(home_dir().join("custom/zed-settings.json"))
+        );
+    }
+
+    #[test]
+    fn resolve_inherit_path_string_absolute_path_used_as_is() {
+        let value: Value = serde_json::from_str(
+            r#"{ "inherit_from_zed": "/etc/zed/settings.json" }"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            resolve_inherit_path(&value),
+            Some(PathBuf::from("/etc/zed/settings.json"))
+        );
+    }
+
+    #[test]
+    fn zex_values_win_over_inherited_zed_values_end_to_end() {
+        let zed_contents = r#"{
+            // zed's own settings
+            "icon_theme": "Colored Zed Icons Theme Dark",
+            "ui_font_family": "JetBrainsMono Nerd Font Mono",
+            "ui_font_size": 16.0,
+            "theme": {
+                "mode": "dark",
+                "light": "VSCode Dark Modern",
+                "dark": "VSCode Dark Modern",
+            },
+        }"#;
+        let zex_contents = r#"{
+            "inherit_from_zed": true,
+            "ui_font_size": 13.0,
+            "theme": { "light": "VSCode Light Modern" }
+        }"#;
+
+        let mut zed_value = parse_jsonc(zed_contents).unwrap();
+        let zex_value = parse_jsonc(zex_contents).unwrap();
+        merge_json(&mut zed_value, zex_value);
+
+        let settings: Settings = serde_json::from_value(zed_value).unwrap();
+
+        assert_eq!(
+            settings.icon_theme.as_deref(),
+            Some("Colored Zed Icons Theme Dark")
+        );
+        assert_eq!(
+            settings.ui_font_family.as_deref(),
+            Some("JetBrainsMono Nerd Font Mono")
+        );
+        assert_eq!(settings.ui_font_size, Some(13.0));
+        assert_eq!(settings.theme.mode, ThemeMode::Dark);
+        assert_eq!(settings.theme.light.as_deref(), Some("VSCode Light Modern"));
+        assert_eq!(settings.theme.dark.as_deref(), Some("VSCode Dark Modern"));
     }
 }

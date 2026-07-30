@@ -35,12 +35,19 @@ pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> Option<impl IntoEl
     let props = explorer.properties.as_ref()?;
 
     let icon: AnyElement = if let [path] = props.paths.as_slice() {
+        let is_dir = if props.is_symlink {
+            props.link_target_is_dir
+        } else {
+            props.is_dir
+        };
         let fake = FsEntry {
             name: String::new(),
             path: path.clone(),
-            is_dir: props.is_dir,
+            is_dir,
             size: 0,
             modified: None,
+            is_symlink: props.is_symlink,
+            ..Default::default()
         };
         icon_theme::svg_icon_for_size(&fake, px(40.0), cx)
     } else if props.is_dir {
@@ -104,6 +111,15 @@ pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> Option<impl IntoEl
         .gap_2()
         .child(row("Location:", props.location.clone()))
         .child(row("Type:", props.type_label.clone()))
+        .when(props.is_symlink, |col| {
+            col.child(row(
+                "Target:",
+                props
+                    .link_target
+                    .clone()
+                    .unwrap_or_else(|| "(unresolved)".into()),
+            ))
+        })
         .child(stats_rows)
         .children(dates_rows);
 

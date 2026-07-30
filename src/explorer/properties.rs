@@ -42,6 +42,9 @@ pub struct PropertiesState {
     pub location: SharedString,
     pub type_label: SharedString,
     pub is_dir: bool,
+    pub is_symlink: bool,
+    pub link_target: Option<SharedString>,
+    pub link_target_is_dir: bool,
     pub single: Option<SingleItemInfo>,
     pub stats: StatsState,
     pub focus_handle: FocusHandle,
@@ -83,7 +86,32 @@ impl Explorer {
         let is_dir = metas.iter().all(|(_, meta)| meta.is_dir());
         let any_dir = metas.iter().any(|(_, meta)| meta.is_dir());
 
-        let type_label: SharedString = if metas.len() == 1 {
+        let (is_symlink, is_broken_symlink, link_target, link_target_is_dir) =
+            if metas.len() == 1 && first_meta.is_symlink() {
+                let link_target = std::fs::read_link(first_path)
+                    .ok()
+                    .map(|target| target.to_string_lossy().into_owned().into());
+                match std::fs::metadata(first_path) {
+                    Ok(target_meta) => (true, false, link_target, target_meta.is_dir()),
+                    Err(_) => (true, true, link_target, false),
+                }
+            } else {
+                (false, false, None, false)
+            };
+
+        let type_label: SharedString = if metas.len() == 1 && is_broken_symlink {
+            "Broken Symbolic Link".into()
+        } else if metas.len() == 1 && is_symlink {
+            let name = first_path
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            format!(
+                "Symbolic Link ({})",
+                entry::type_label_for(&name, link_target_is_dir)
+            )
+            .into()
+        } else if metas.len() == 1 {
             let name = first_path
                 .file_name()
                 .map(|name| name.to_string_lossy().into_owned())
@@ -163,6 +191,9 @@ impl Explorer {
             location,
             type_label,
             is_dir,
+            is_symlink,
+            link_target,
+            link_target_is_dir,
             single,
             stats,
             focus_handle,

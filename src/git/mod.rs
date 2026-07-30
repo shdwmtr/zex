@@ -64,7 +64,8 @@ pub fn snapshot(dir: &Path, status: &GitStatusSettings, cli: &GitCliSettings) ->
     args.push(".");
 
     let output = run_git(dir, cli, &args)?;
-    let snapshot = parse_porcelain(dir, &output)?;
+    let repo_root = find_repo_root(dir).unwrap_or_else(|| dir.to_path_buf());
+    let snapshot = parse_porcelain(&repo_root, &output)?;
 
     if let Some(max) = cli.max_repo_entries
         && snapshot.statuses.len() as u64 > max
@@ -73,6 +74,16 @@ pub fn snapshot(dir: &Path, status: &GitStatusSettings, cli: &GitCliSettings) ->
     }
 
     Some(snapshot)
+}
+
+fn find_repo_root(dir: &Path) -> Option<PathBuf> {
+    let mut current = dir;
+    loop {
+        if current.join(".git").exists() {
+            return Some(current.to_path_buf());
+        }
+        current = current.parent()?;
+    }
 }
 
 fn run_git(dir: &Path, cli: &GitCliSettings, args: &[&str]) -> Option<Vec<u8>> {
@@ -344,5 +355,43 @@ mod tests {
         let worst = worst_status_under(&statuses, &dir().join("sub"));
 
         assert_eq!(worst, None);
+    }
+
+    #[test]
+    fn find_repo_root_walks_up_to_the_nearest_dot_git() {
+        let root = std::env::temp_dir().join(format!("zex_repo_root_test_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let nested = root.join("src/explorer");
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::create_dir(root.join(".git")).unwrap();
+
+        assert_eq!(find_repo_root(&nested), Some(root.clone()));
+        assert_eq!(find_repo_root(&root), Some(root.clone()));
+
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn find_repo_root_treats_a_dot_git_file_as_a_repo_marker() {
+        let root =
+            std::env::temp_dir().join(format!("zex_repo_root_file_test_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::write(root.join(".git"), "gitdir: /elsewhere/.git/worktrees/x\n").unwrap();
+
+        assert_eq!(find_repo_root(&root), Some(root.clone()));
+
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn find_repo_root_is_none_outside_any_repo() {
+        let root = std::env::temp_dir().join(format!("zex_no_repo_test_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+
+        assert_eq!(find_repo_root(&root), None);
+
+        std::fs::remove_dir_all(&root).unwrap();
     }
 }

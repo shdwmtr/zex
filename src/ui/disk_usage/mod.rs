@@ -170,12 +170,22 @@ fn render_ready_screen(
 ) -> impl IntoElement {
     let state = explorer.disk_usage.as_ref().unwrap();
     let root_id = tree.find(&state.current_root).unwrap_or(tree.root());
+    let list_width = state.list_width;
+    let list_resize_active = state.list_resize_drag.is_some();
+    let entity = cx.entity();
 
     div()
+        .relative()
         .flex()
         .flex_row()
         .flex_1()
         .overflow_hidden()
         .child(tree_list::render(explorer, tree.clone(), root_id, cx))
         .child(sunburst::render(explorer, tree, root_id, cx))
+        .child(tree_list::list_resize_handle(
+            list_width,
+            list_resize_active,
+            entity,
+            cx,
+        ))
 }

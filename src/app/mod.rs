@@ -6,7 +6,7 @@ use gpui::{App, AppContext, Application, Bounds, WindowBounds, WindowOptions, px
 use crate::explorer::Explorer;
 use crate::keys;
 use crate::settings::Settings;
-use crate::theme::{UiFont, icon_theme};
+use crate::theme::{self, UiFont, color_theme, icon_theme};
 use crate::ui;
 
 use window_root::WindowRoot;
@@ -14,6 +14,7 @@ use window_root::WindowRoot;
 pub fn run(settings: Settings) {
     let icon_theme_state = icon_theme::resolve(&settings);
     let show_hidden_files = settings.show_hidden_files.unwrap_or(false);
+    let sidebar_visible = settings.sidebar_visible.unwrap_or(true);
     let sidebar_entries = settings.sidebar.clone();
     let git_settings = settings.git.clone();
     let disk_usage_settings = settings.disk_usage.clone();
@@ -26,6 +27,7 @@ pub fn run(settings: Settings) {
             ui::popup_menu::init(cx);
             ui::path_bar::init(cx);
             cx.set_global(icon_theme_state);
+            theme::init(color_theme::resolve(&settings.theme, cx));
 
             let default_font = UiFont::default();
             cx.set_global(UiFont {
@@ -56,6 +58,7 @@ pub fn run(settings: Settings) {
                             window,
                             cx,
                             show_hidden_files,
+                            sidebar_visible,
                             sidebar_entries,
                             git_settings,
                             disk_usage_settings,

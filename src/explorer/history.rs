@@ -52,6 +52,29 @@ impl History {
             false
         }
     }
+
+    pub fn back_entries(&self) -> impl Iterator<Item = (usize, &Path)> {
+        self.entries[..self.index]
+            .iter()
+            .enumerate()
+            .rev()
+            .map(|(ix, path)| (ix, path.as_path()))
+    }
+
+    pub fn forward_entries(&self) -> impl Iterator<Item = (usize, &Path)> {
+        self.entries[self.index + 1..]
+            .iter()
+            .enumerate()
+            .map(|(offset, path)| (self.index + 1 + offset, path.as_path()))
+    }
+
+    pub fn jump_to(&mut self, index: usize) -> bool {
+        if index == self.index || index >= self.entries.len() {
+            return false;
+        }
+        self.index = index;
+        true
+    }
 }
 
 #[cfg(test)]
@@ -122,5 +145,39 @@ mod tests {
         assert!(!history.can_go_forward());
         assert!(history.back());
         assert_eq!(history.current(), Path::new("/a"));
+    }
+
+    #[test]
+    fn back_and_forward_entries_list_the_rest_of_the_stack() {
+        let mut history = History::new(PathBuf::from("/a"));
+        history.navigate(PathBuf::from("/b"));
+        history.navigate(PathBuf::from("/c"));
+        history.back();
+
+        let back: Vec<_> = history
+            .back_entries()
+            .map(|(ix, path)| (ix, path.to_path_buf()))
+            .collect();
+        assert_eq!(back, vec![(0, PathBuf::from("/a"))]);
+
+        let forward: Vec<_> = history
+            .forward_entries()
+            .map(|(ix, path)| (ix, path.to_path_buf()))
+            .collect();
+        assert_eq!(forward, vec![(2, PathBuf::from("/c"))]);
+    }
+
+    #[test]
+    fn jump_to_moves_directly_to_an_index() {
+        let mut history = History::new(PathBuf::from("/a"));
+        history.navigate(PathBuf::from("/b"));
+        history.navigate(PathBuf::from("/c"));
+
+        assert!(history.jump_to(0));
+        assert_eq!(history.current(), Path::new("/a"));
+        assert!(history.can_go_forward());
+
+        assert!(!history.jump_to(0));
+        assert!(!history.jump_to(10));
     }
 }

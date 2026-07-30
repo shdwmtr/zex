@@ -206,6 +206,34 @@ pub fn disk_usage_row_menu(
     )
 }
 
+pub fn history_menu(
+    explorer: Entity<Explorer>,
+    entries: Vec<(usize, PathBuf)>,
+    mut menu: PopupMenu,
+    _window: &mut Window,
+    _cx: &mut Context<PopupMenu>,
+) -> PopupMenu {
+    if entries.is_empty() {
+        return menu.item(PopupMenuItem::new("No History").disabled(true));
+    }
+
+    for (index, path) in entries {
+        let label = path
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_else(|| path.display().to_string());
+        let jump_explorer = explorer.clone();
+
+        menu = menu.item(PopupMenuItem::new(label).on_click(move |_, _window, cx| {
+            jump_explorer.update(cx, |explorer, cx| {
+                explorer.go_to_history_entry(index, cx);
+            });
+        }));
+    }
+
+    menu
+}
+
 pub fn column_menu(
     explorer: Entity<Explorer>,
     menu: PopupMenu,
