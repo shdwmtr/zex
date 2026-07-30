@@ -1,7 +1,9 @@
 pub mod bulk_op;
 pub mod clipboard_ops;
 pub mod columns;
+pub mod disk_usage;
 pub mod drag;
+pub mod git_ops;
 mod history;
 mod navigation;
 mod new_entry;
@@ -24,9 +26,11 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::filesystem::entry::FsEntry;
 use crate::filesystem::trash_entry::TrashEntry;
 use crate::filesystem::undo_op::UndoOp;
+use crate::git::GitSnapshot;
 use crate::keys;
-use crate::settings::SidebarItem;
+use crate::settings::{DiskUsageSettings, GitSettings, SidebarItem};
 use crate::theme;
+use crate::ui;
 use crate::ui::{
     bulk_progress, file_list, path_bar, properties_window, sidebar, status_bar, warning_dialog,
 };
@@ -109,6 +113,12 @@ pub struct Explorer {
     redo_stack: Vec<UndoOp>,
     watcher: Option<notify::RecommendedWatcher>,
     watch_task: Option<Task<()>>,
+    pub git_settings: GitSettings,
+    pub git_snapshot: Option<GitSnapshot>,
+    git_task: Option<Task<()>>,
+    git_poll_task: Option<Task<()>>,
+    pub disk_usage_settings: DiskUsageSettings,
+    pub disk_usage: Option<disk_usage::DiskUsageState>,
 }
 
 impl Explorer {
@@ -117,6 +127,8 @@ impl Explorer {
         cx: &mut Context<Self>,
         show_hidden: bool,
         sidebar_entries: Vec<SidebarItem>,
+        git_settings: GitSettings,
+        disk_usage_settings: DiskUsageSettings,
     ) -> Self {
         let focus_handle = cx.focus_handle();
         window.focus(&focus_handle);
@@ -162,6 +174,12 @@ impl Explorer {
             redo_stack: Vec::new(),
             watcher: None,
             watch_task: None,
+            git_settings,
+            git_snapshot: None,
+            git_task: None,
+            git_poll_task: None,
+            disk_usage_settings,
+            disk_usage: None,
         };
         this.enter_directory(cx);
         this
@@ -169,7 +187,17 @@ impl Explorer {
 }
 
 impl Render for Explorer {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.disk_usage.is_some() {
+            ui::disk_usage::render_panel(self, cx).into_any_element()
+        } else {
+            self.render_browser(window, cx).into_any_element()
+        }
+    }
+}
+
+impl Explorer {
+    fn render_browser(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .id("zex-root")
             .font_weight(cx.global::<theme::UiFont>().weight)

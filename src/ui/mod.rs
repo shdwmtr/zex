@@ -1,5 +1,7 @@
 pub mod bulk_progress;
+pub mod column_header;
 pub mod context_menu;
+pub mod disk_usage;
 pub mod file_list;
 pub mod path_bar;
 pub mod popup_menu;

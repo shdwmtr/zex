@@ -1,7 +1,8 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use gpui::{
-    AnyElement, App, Context, IntoElement, KeyBinding, actions, deferred, div, prelude::*, px, svg,
+    AnyElement, App, ClickEvent, Context, IntoElement, KeyBinding, Window, actions, deferred, div,
+    prelude::*, px, svg,
 };
 
 use crate::app::assets;
@@ -69,6 +70,40 @@ fn nav_button(
     }
 }
 
+fn text_button(
+    id: &'static str,
+    label: &'static str,
+    enabled: bool,
+    on_click: impl Fn(&mut Explorer, &ClickEvent, &mut Window, &mut Context<Explorer>) + 'static,
+    cx: &Context<Explorer>,
+) -> AnyElement {
+    let color = if enabled {
+        theme::text_primary()
+    } else {
+        theme::text_faint()
+    };
+
+    let button = div()
+        .id(id)
+        .flex()
+        .items_center()
+        .justify_center()
+        .size(px(22.0))
+        .rounded_md()
+        .text_color(color)
+        .child(label);
+
+    if enabled {
+        button
+            .cursor_pointer()
+            .hover(|style| style.bg(theme::bg_breadcrumb_hover()))
+            .on_click(cx.listener(on_click))
+            .into_any_element()
+    } else {
+        button.into_any_element()
+    }
+}
+
 fn path_bar_empty_space(cx: &Context<Explorer>) -> AnyElement {
     div()
         .id("path-bar-empty-space")
@@ -83,6 +118,10 @@ fn path_bar_empty_space(cx: &Context<Explorer>) -> AnyElement {
 }
 
 fn breadcrumbs(explorer: &Explorer, cx: &Context<Explorer>) -> Vec<AnyElement> {
+    if let Some(state) = &explorer.disk_usage {
+        return path_segments(&state.current_root, true, cx);
+    }
+
     if explorer.is_trash() {
         return vec![
             div()
@@ -96,10 +135,14 @@ fn breadcrumbs(explorer: &Explorer, cx: &Context<Explorer>) -> Vec<AnyElement> {
         ];
     }
 
+    path_segments(explorer.current_dir(), false, cx)
+}
+
+fn path_segments(path: &Path, is_disk_usage: bool, cx: &Context<Explorer>) -> Vec<AnyElement> {
     let mut segments: Vec<(String, PathBuf)> = Vec::new();
     let mut accumulated = PathBuf::new();
 
-    for component in explorer.current_dir().components() {
+    for component in path.components() {
         accumulated.push(component.as_os_str());
         let label = component.as_os_str().to_string_lossy().into_owned();
         let label = if label.is_empty() {
@@ -113,7 +156,7 @@ fn breadcrumbs(explorer: &Explorer, cx: &Context<Explorer>) -> Vec<AnyElement> {
     let mut children: Vec<AnyElement> = Vec::new();
     let mut prev_was_root = false;
 
-    for (ix, (label, path)) in segments.into_iter().enumerate() {
+    for (ix, (label, seg_path)) in segments.into_iter().enumerate() {
         let is_root = label == "/";
         if ix > 0 && !prev_was_root {
             children.push(
@@ -123,7 +166,8 @@ fn breadcrumbs(explorer: &Explorer, cx: &Context<Explorer>) -> Vec<AnyElement> {
                     .into_any_element(),
             );
         }
-        let drop_path = path.clone();
+        let click_path = seg_path.clone();
+        let drop_path = seg_path.clone();
         children.push(
             div()
                 .id(ix)
@@ -137,7 +181,11 @@ fn breadcrumbs(explorer: &Explorer, cx: &Context<Explorer>) -> Vec<AnyElement> {
                         .text_color(theme::text_primary())
                 })
                 .on_click(cx.listener(move |explorer, _event, _window, cx| {
-                    explorer.navigate_to(path.clone(), cx);
+                    if is_disk_usage {
+                        explorer.drill_into(click_path.clone(), cx);
+                    } else {
+                        explorer.navigate_to(click_path.clone(), cx);
+                    }
                 }))
                 .drag_over::<gpui::ExternalPaths>(|style, _paths, _window, _cx| {
                     style
@@ -204,6 +252,12 @@ fn suggestions_popup(
 }
 
 pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoElement {
+    let is_disk_usage = explorer.disk_usage.is_some();
+    let can_go_up = explorer
+        .disk_usage
+        .as_ref()
+        .is_some_and(|state| state.current_root != state.mount_point);
+
     let body: AnyElement = match &explorer.editing_path {
         Some(editing) => div()
             .relative()
@@ -250,19 +304,39 @@ pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoElement {
         .px_3()
         .py_2()
         .bg(theme::bg_bar())
-        .child(nav_button(
-            "go-back",
-            "icons/chevron-left.svg",
-            explorer.can_go_back(),
-            NavDirection::Back,
-            cx,
-        ))
-        .child(nav_button(
-            "go-forward",
-            "icons/chevron-right.svg",
-            explorer.can_go_forward(),
-            NavDirection::Forward,
-            cx,
-        ))
+        .when(!is_disk_usage, |el| {
+            el.child(nav_button(
+                "go-back",
+                "icons/chevron-left.svg",
+                explorer.can_go_back(),
+                NavDirection::Back,
+                cx,
+            ))
+            .child(nav_button(
+                "go-forward",
+                "icons/chevron-right.svg",
+                explorer.can_go_forward(),
+                NavDirection::Forward,
+                cx,
+            ))
+        })
+        .when(is_disk_usage, |el| {
+            el.child(text_button(
+                "disk-usage-up",
+                "↑",
+                can_go_up,
+                |explorer, _event, _window, cx| explorer.go_up_one_level(cx),
+                cx,
+            ))
+        })
         .child(body)
+        .when(is_disk_usage, |el| {
+            el.child(text_button(
+                "disk-usage-close",
+                "×",
+                true,
+                |explorer, _event, window, cx| explorer.close_disk_usage(window, cx),
+                cx,
+            ))
+        })
 }

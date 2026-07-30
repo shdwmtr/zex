@@ -60,7 +60,10 @@ fn path_completions(text: &str) -> Vec<PathBuf> {
 
 impl Explorer {
     pub fn begin_edit_path(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let default_value = self.current_dir().to_string_lossy().into_owned();
+        let default_value = match &self.disk_usage {
+            Some(state) => state.current_root.to_string_lossy().into_owned(),
+            None => self.current_dir().to_string_lossy().into_owned(),
+        };
 
         let input = cx.new(|cx| InputState::new(window, cx).default_value(default_value));
         input.update(cx, |input, cx| input.focus(window, cx));
@@ -101,14 +104,14 @@ impl Explorer {
             .and_then(|ix| editing.suggestions.get(ix).cloned())
         {
             self.op_error = None;
-            self.navigate_to(path, cx);
+            self.navigate_or_drill(path, cx);
             return;
         }
 
         let text = editing.input.read(cx).value().to_string();
         let trimmed = text.trim();
 
-        if trimmed == TRASH_VIRTUAL_PATH {
+        if trimmed == TRASH_VIRTUAL_PATH && self.disk_usage.is_none() {
             self.op_error = None;
             self.navigate_to(trash_virtual_path(), cx);
             cx.notify();
@@ -119,11 +122,26 @@ impl Explorer {
 
         if path.is_dir() {
             self.op_error = None;
-            self.navigate_to(path, cx);
+            self.navigate_or_drill(path, cx);
         } else {
             self.op_error = Some(format!("Not a directory: {}", path.display()));
         }
         cx.notify();
+    }
+
+    fn navigate_or_drill(&mut self, path: PathBuf, cx: &mut Context<Self>) {
+        let Some(state) = &self.disk_usage else {
+            self.navigate_to(path, cx);
+            return;
+        };
+
+        if !path.starts_with(&state.mount_point) {
+            self.op_error = Some(format!("{} is not on this disk", path.display()));
+            cx.notify();
+            return;
+        }
+
+        self.drill_into(path, cx);
     }
 
     pub fn select_next_suggestion(&mut self, cx: &mut Context<Self>) {
@@ -166,7 +184,7 @@ impl Explorer {
     pub fn accept_path_suggestion(&mut self, path: PathBuf, cx: &mut Context<Self>) {
         self.editing_path = None;
         self.op_error = None;
-        self.navigate_to(path, cx);
+        self.navigate_or_drill(path, cx);
     }
 
     pub fn complete_path_suggestion(&mut self, cx: &mut Context<Self>) {

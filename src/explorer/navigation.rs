@@ -27,15 +27,12 @@ impl Explorer {
     }
 
     fn compute_free_space_label(dir: &Path) -> String {
-        let disks = sysinfo::Disks::new_with_refreshed_list();
-        let best = disks
-            .list()
-            .iter()
-            .filter(|disk| dir.starts_with(disk.mount_point()))
-            .max_by_key(|disk| disk.mount_point().as_os_str().len());
-
-        match best {
-            Some(disk) => format!("{} free", entry::format_size(disk.available_space())),
+        match crate::filesystem::disk::resolve_disk_for(dir) {
+            Some(disk) => format!(
+                "{} free of {}",
+                entry::format_size(disk.available_space),
+                entry::format_size(disk.total_space)
+            ),
             None => String::new(),
         }
     }
@@ -88,6 +85,8 @@ impl Explorer {
         } else {
             self.watch_current_dir(cx);
         }
+        self.refresh_git(cx);
+        self.start_git_poll(cx);
     }
 
     fn watch_current_dir(&mut self, cx: &mut Context<Self>) {
@@ -119,6 +118,7 @@ impl Explorer {
                     let alive = weak
                         .update(cx, |explorer, cx| {
                             explorer.refresh_entries();
+                            explorer.refresh_git(cx);
                             cx.notify();
                         })
                         .is_ok();

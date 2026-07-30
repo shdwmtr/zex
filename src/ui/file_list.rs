@@ -1,39 +1,32 @@
 use std::ops::Range;
 use std::time::{Duration, SystemTime};
 
-use crate::app::assets;
 use crate::explorer::Explorer;
 use crate::explorer::clipboard_ops::ClipboardOp;
 use crate::explorer::columns::{Column, ColumnVisibility, ColumnWidths, SortColumn, SortDirection};
 use crate::explorer::drag::ScrollbarId;
+use crate::explorer::git_ops::git_letter_for;
 use crate::filesystem::entry::{self, format_modified, format_size, type_label};
 use crate::filesystem::operations::new_entry::NewEntryKind;
+use crate::git::GitFileStatus;
+use crate::settings::GitBadgeStyle;
 use crate::theme;
 use crate::theme::icon_theme;
+use crate::ui::column_header;
 use crate::ui::context_menu;
 use crate::ui::popup_menu::ContextMenuExt;
 use crate::ui::scrollbar::Scrollbar;
 use crate::ui::text_input::{Escape, TextInput as Input};
 use gpui::{
     AnyElement, Context, DevicePixels, Div, DragMoveEvent, Entity, IntoElement, MouseButton,
-    MouseDownEvent, MouseUpEvent, Render, Stateful, Transformation, Window, div, prelude::*, px,
-    radians, svg, uniform_list,
+    MouseDownEvent, MouseUpEvent, Render, Stateful, Window, div, prelude::*, px, uniform_list,
 };
 
 const NAME_MIN_WIDTH: f32 = 80.0;
-const RESIZE_HIT_WIDTH: f32 = 9.0;
 const HEADER_HEIGHT: f32 = 28.0;
 const DRAG_ICON_LOGICAL_SIZE: f32 = 24.0;
 const TRASH_LOCATION_WIDTH: f32 = 260.0;
 const TRASH_DELETED_WIDTH: f32 = 170.0;
-
-struct ColumnResizeGhost;
-
-impl Render for ColumnResizeGhost {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        div()
-    }
-}
 
 struct BoxSelectGhost;
 
@@ -50,32 +43,23 @@ fn resize_handle(
 ) -> impl IntoElement {
     let drag_explorer = explorer.clone();
 
-    div()
-        .id(("column-resize-handle", column as u8 as u64))
-        .absolute()
-        .top_0()
-        .bottom_0()
-        .left(px(-RESIZE_HIT_WIDTH / 2.0))
-        .w(px(RESIZE_HIT_WIDTH))
-        .cursor_col_resize()
-        .on_drag(column, move |_column, _point, window, cx| {
+    column_header::resize_handle(
+        ("column-resize-handle", column as u8 as u64),
+        column,
+        move |_column, _point, window, cx| {
             let anchor_x = f32::from(window.mouse_position().x);
             drag_explorer.update(cx, |explorer, cx| {
                 explorer.begin_column_resize(column, anchor_x, cx);
             });
-            cx.new(|_| ColumnResizeGhost)
-        })
-        .on_drag_move::<Column>(cx.listener(
-            move |explorer, event: &DragMoveEvent<Column>, _window, cx| {
-                explorer.update_column_resize(f32::from(event.event.position.x), cx);
-            },
-        ))
-        .on_mouse_up(
-            MouseButton::Left,
-            cx.listener(|explorer, _event: &MouseUpEvent, _window, cx| {
-                explorer.end_column_resize(cx);
-            }),
-        )
+            cx.new(|_| column_header::ResizeGhost)
+        },
+        cx.listener(move |explorer, event: &DragMoveEvent<Column>, _window, cx| {
+            explorer.update_column_resize(f32::from(event.event.position.x), cx);
+        }),
+        cx.listener(|explorer, _event: &MouseUpEvent, _window, cx| {
+            explorer.end_column_resize(cx);
+        }),
+    )
 }
 
 fn sort_header_cell(
@@ -91,49 +75,19 @@ fn sort_header_cell(
     } else {
         SortDirection::Ascending
     };
-    let rotation = match direction {
-        SortDirection::Ascending => radians(-std::f32::consts::FRAC_PI_2),
-        SortDirection::Descending => radians(std::f32::consts::FRAC_PI_2),
-    };
-    let icon_path = assets::assets_dir().join("icons/chevron-right.svg");
-    let group_name = format!("sort-header-{sort_column:?}");
 
-    div()
-        .id(("sort-header", sort_column as u8 as u64))
-        .group(group_name.clone())
-        .h_full()
-        .flex_shrink_0()
-        .flex()
-        .flex_row()
-        .items_center()
-        .justify_between()
-        .gap_1()
-        .pr_2()
-        .cursor_pointer()
-        .when(width.is_some(), |el| el.pl_2())
-        .when_some(width, |el, w| el.w(px(w)))
-        .when(width.is_none(), |el| el.flex_1().min_w(px(NAME_MIN_WIDTH)))
-        .when(active, |el| el.text_color(theme::text_primary()))
-        .child(div().truncate().child(label))
-        .child(
-            svg()
-                .flex_shrink_0()
-                .path(icon_path.to_string_lossy().into_owned())
-                .size(px(10.0))
-                .text_color(if active {
-                    theme::text_primary()
-                } else {
-                    theme::text_muted()
-                })
-                .with_transformation(Transformation::rotate(rotation))
-                .opacity(0.0)
-                .group_hover(group_name, |style| style.opacity(1.0)),
-        )
-        .on_click(
-            cx.listener(move |explorer, _event: &gpui::ClickEvent, _window, cx| {
-                explorer.set_sort(sort_column, cx);
-            }),
-        )
+    column_header::sort_cell(
+        ("sort-header", sort_column as u8 as u64),
+        format!("sort-header-{sort_column:?}"),
+        label,
+        width,
+        NAME_MIN_WIDTH,
+        active,
+        direction,
+        cx.listener(move |explorer, _event: &gpui::ClickEvent, _window, cx| {
+            explorer.set_sort(sort_column, cx);
+        }),
+    )
 }
 
 fn column_cell(width: f32, text: impl IntoElement) -> Div {
@@ -148,34 +102,18 @@ fn column_cell(width: f32, text: impl IntoElement) -> Div {
 }
 
 fn column_divider_overlay(widths: ColumnWidths, visibility: ColumnVisibility) -> impl IntoElement {
-    fn divider(width: f32) -> Div {
-        div()
-            .w(px(width))
-            .h_full()
-            .flex_shrink_0()
-            .border_l_1()
-            .border_color(theme::border())
+    let mut divider_widths = Vec::new();
+    if visibility.get(Column::Type) {
+        divider_widths.push(widths.get(Column::Type));
+    }
+    if visibility.get(Column::Size) {
+        divider_widths.push(widths.get(Column::Size));
+    }
+    if visibility.get(Column::Modified) {
+        divider_widths.push(widths.get(Column::Modified));
     }
 
-    div()
-        .absolute()
-        .top_0()
-        .left_0()
-        .right_0()
-        .h(px(HEADER_HEIGHT))
-        .flex()
-        .flex_row()
-        .px_3()
-        .child(div().flex_1().min_w(px(NAME_MIN_WIDTH)))
-        .when(visibility.get(Column::Type), |row| {
-            row.child(divider(widths.get(Column::Type)))
-        })
-        .when(visibility.get(Column::Size), |row| {
-            row.child(divider(widths.get(Column::Size)))
-        })
-        .when(visibility.get(Column::Modified), |row| {
-            row.child(divider(widths.get(Column::Modified)))
-        })
+    column_header::divider_overlay(px(HEADER_HEIGHT), NAME_MIN_WIDTH, divider_widths)
 }
 
 pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoElement {
@@ -370,6 +308,12 @@ fn render_dir(explorer: &Explorer, cx: &Context<Explorer>) -> AnyElement {
                         explorer.end_box_select(cx);
                     }),
                 )
+                .on_mouse_up_out(
+                    MouseButton::Left,
+                    cx.listener(|explorer, _event: &MouseUpEvent, _window, cx| {
+                        explorer.end_box_select(cx);
+                    }),
+                )
                 .on_click(cx.listener(|explorer, event: &gpui::ClickEvent, _window, cx| {
                     explorer.click_empty_space(event.position(), cx);
                 }))
@@ -415,6 +359,32 @@ fn render_dir(explorer: &Explorer, cx: &Context<Explorer>) -> AnyElement {
                                             vec![entry.path.clone()]
                                         };
 
+                                        let git_status = explorer.git_status_for(&entry);
+                                        let badge_style = explorer.git_settings.status.badge_style;
+                                        let git_color = git_status.map(|status| explorer.git_color_for(status));
+                                        let is_dimmed_ignored = git_status == Some(GitFileStatus::Ignored)
+                                            && explorer.git_settings.status.dim_ignored;
+                                        let show_text_color = matches!(
+                                            badge_style,
+                                            GitBadgeStyle::TextColor | GitBadgeStyle::Both
+                                        );
+                                        let git_badge = git_status
+                                            .filter(|_| matches!(badge_style, GitBadgeStyle::Icon | GitBadgeStyle::Both))
+                                            .map(|status| {
+                                                div()
+                                                    .flex_shrink_0()
+                                                    .w(px(14.0))
+                                                    .h(px(14.0))
+                                                    .rounded_full()
+                                                    .bg(explorer.git_color_for(status))
+                                                    .flex()
+                                                    .items_center()
+                                                    .justify_center()
+                                                    .text_size(px(9.0))
+                                                    .text_color(theme::bg_root())
+                                                    .child(git_letter_for(status))
+                                            });
+
                                         let name_child: AnyElement = match &explorer.renaming {
                                             Some(renaming) if renaming.path == entry.path => div()
                                                 .flex_1()
@@ -424,12 +394,19 @@ fn render_dir(explorer: &Explorer, cx: &Context<Explorer>) -> AnyElement {
                                                 }))
                                                 .child(Input::new(&renaming.input))
                                                 .into_any_element(),
-                                            _ => div()
-                                                .flex_1()
-                                                .min_w(px(0.0))
-                                                .truncate()
-                                                .child(entry.name.clone())
-                                                .into_any_element(),
+                                            _ => {
+                                                let mut name_div = div()
+                                                    .flex_1()
+                                                    .min_w(px(0.0))
+                                                    .truncate()
+                                                    .child(entry.name.clone());
+                                                if show_text_color
+                                                    && let Some(color) = git_color
+                                                {
+                                                    name_div = name_div.text_color(color);
+                                                }
+                                                name_div.into_any_element()
+                                            }
                                         };
 
                                         rows.push(
@@ -442,6 +419,7 @@ fn render_dir(explorer: &Explorer, cx: &Context<Explorer>) -> AnyElement {
                                                 .px_3()
                                                 .py_1()
                                                 .when(is_cut, |this| this.opacity(0.5))
+                                                .when(!is_cut && is_dimmed_ignored, |this| this.opacity(0.55))
                                                 .when(is_selected, |this| this.bg(theme::bg_selected()))
                                                 .on_mouse_down(
                                                     MouseButton::Left,
@@ -522,7 +500,8 @@ fn render_dir(explorer: &Explorer, cx: &Context<Explorer>) -> AnyElement {
                                                         .flex_1()
                                                         .min_w(px(0.0))
                                                         .child(icon)
-                                                        .child(name_child),
+                                                        .child(name_child)
+                                                        .children(git_badge),
                                                 )
                                                 .when(explorer.column_visibility.get(Column::Type), |row| {
                                                     row.child(
@@ -576,28 +555,11 @@ fn render_dir(explorer: &Explorer, cx: &Context<Explorer>) -> AnyElement {
 }
 
 fn trash_column_divider_overlay(size_width: f32) -> impl IntoElement {
-    fn divider(width: f32) -> Div {
-        div()
-            .w(px(width))
-            .h_full()
-            .flex_shrink_0()
-            .border_l_1()
-            .border_color(theme::border())
-    }
-
-    div()
-        .absolute()
-        .top_0()
-        .left_0()
-        .right_0()
-        .h(px(HEADER_HEIGHT))
-        .flex()
-        .flex_row()
-        .px_3()
-        .child(div().flex_1().min_w(px(NAME_MIN_WIDTH)))
-        .child(divider(TRASH_LOCATION_WIDTH))
-        .child(divider(size_width))
-        .child(divider(TRASH_DELETED_WIDTH))
+    column_header::divider_overlay(
+        px(HEADER_HEIGHT),
+        NAME_MIN_WIDTH,
+        [TRASH_LOCATION_WIDTH, size_width, TRASH_DELETED_WIDTH],
+    )
 }
 
 fn render_trash(explorer: &Explorer, cx: &Context<Explorer>) -> AnyElement {
@@ -689,6 +651,12 @@ fn render_trash(explorer: &Explorer, cx: &Context<Explorer>) -> AnyElement {
                     },
                 ))
                 .on_mouse_up(
+                    MouseButton::Left,
+                    cx.listener(|explorer, _event: &MouseUpEvent, _window, cx| {
+                        explorer.end_box_select(cx);
+                    }),
+                )
+                .on_mouse_up_out(
                     MouseButton::Left,
                     cx.listener(|explorer, _event: &MouseUpEvent, _window, cx| {
                         explorer.end_box_select(cx);

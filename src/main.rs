@@ -1,6 +1,7 @@
 mod app;
 mod explorer;
 mod filesystem;
+mod git;
 mod keys;
 mod settings;
 mod theme;

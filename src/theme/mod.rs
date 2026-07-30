@@ -80,10 +80,10 @@ pub fn text_selection_fill() -> Hsla {
 
 pub fn box_select_fill() -> Hsla {
     Hsla {
-        h: 0.0,
-        s: 0.0,
-        l: 0.0,
-        a: 0.12,
+        h: 0.6,
+        s: 0.75,
+        l: 0.65,
+        a: 0.15,
     }
 }
 
@@ -102,4 +102,26 @@ pub fn drop_target_fill() -> Hsla {
 
 pub fn drop_target_border() -> Rgba {
     rgb(0x81c995)
+}
+
+pub fn git_color_modified() -> Rgba {
+    rgb(0xe2c08d)
+}
+pub fn git_color_added() -> Rgba {
+    rgb(0x73c991)
+}
+pub fn git_color_deleted() -> Rgba {
+    rgb(0xf14c4c)
+}
+pub fn git_color_renamed() -> Rgba {
+    rgb(0x73c991)
+}
+pub fn git_color_untracked() -> Rgba {
+    rgb(0x73c991)
+}
+pub fn git_color_ignored() -> Rgba {
+    rgb(0x777777)
+}
+pub fn git_color_conflicted() -> Rgba {
+    rgb(0xf14c4c)
 }

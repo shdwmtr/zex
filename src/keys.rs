@@ -20,6 +20,7 @@ actions!(
         GoUp,
         GoBack,
         GoForward,
+        CloseDiskUsage,
     ]
 );
 
@@ -40,5 +41,6 @@ pub fn init(cx: &mut App) {
         KeyBinding::new("backspace", GoUp, Some("Explorer")),
         KeyBinding::new("left", GoBack, Some("Explorer")),
         KeyBinding::new("right", GoForward, Some("Explorer")),
+        KeyBinding::new("escape", CloseDiskUsage, Some("DiskUsage")),
     ]);
 }

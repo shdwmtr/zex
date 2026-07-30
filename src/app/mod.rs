@@ -15,6 +15,8 @@ pub fn run(settings: Settings) {
     let icon_theme_state = icon_theme::resolve(&settings);
     let show_hidden_files = settings.show_hidden_files.unwrap_or(false);
     let sidebar_entries = settings.sidebar.clone();
+    let git_settings = settings.git.clone();
+    let disk_usage_settings = settings.disk_usage.clone();
 
     Application::new()
         .with_assets(assets::Assets::new())
@@ -49,8 +51,16 @@ pub fn run(settings: Settings) {
                     ..Default::default()
                 },
                 |window, cx| {
-                    let explorer =
-                        cx.new(|cx| Explorer::new(window, cx, show_hidden_files, sidebar_entries));
+                    let explorer = cx.new(|cx| {
+                        Explorer::new(
+                            window,
+                            cx,
+                            show_hidden_files,
+                            sidebar_entries,
+                            git_settings,
+                            disk_usage_settings,
+                        )
+                    });
                     cx.new(|_| WindowRoot { content: explorer })
                 },
             )

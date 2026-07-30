@@ -171,6 +171,41 @@ fn file_row_menu(
     )
 }
 
+pub fn disk_usage_row_menu(
+    explorer: Entity<Explorer>,
+    path: PathBuf,
+    menu: PopupMenu,
+    _window: &mut Window,
+    _cx: &mut Context<PopupMenu>,
+) -> PopupMenu {
+    let open_explorer = explorer.clone();
+    let open_path = path.clone();
+    let copy_explorer = explorer.clone();
+    let copy_path = path.clone();
+    let trash_explorer = explorer;
+
+    menu.item(PopupMenuItem::new("Open").on_click(move |_, _window, cx| {
+        open_explorer.update(cx, |explorer, cx| {
+            explorer.open_disk_usage_entry(open_path.clone(), cx);
+        });
+    }))
+    .item(
+        PopupMenuItem::new("Copy Path").on_click(move |_, _window, cx| {
+            copy_explorer.update(cx, |explorer, cx| {
+                explorer.copy_paths_to_clipboard(std::slice::from_ref(&copy_path), cx);
+            });
+        }),
+    )
+    .separator()
+    .item(
+        PopupMenuItem::new("Move to Trash").on_click(move |_, _window, cx| {
+            trash_explorer.update(cx, |explorer, cx| {
+                explorer.trash_disk_usage_entry(path.clone(), cx);
+            });
+        }),
+    )
+}
+
 pub fn column_menu(
     explorer: Entity<Explorer>,
     menu: PopupMenu,

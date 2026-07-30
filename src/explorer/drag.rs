@@ -16,6 +16,7 @@ pub struct SidebarResizeDrag {
 pub enum ScrollbarId {
     FileList,
     Sidebar,
+    DiskUsageTree,
 }
 
 #[derive(Clone, Copy, Debug)]
