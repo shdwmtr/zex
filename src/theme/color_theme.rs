@@ -131,9 +131,40 @@ fn discover_zed_extension_themes_in(extensions_dir: &Path) -> Vec<(String, Theme
     themes
 }
 
-fn find_zed_extension_theme(name: &str) -> Option<ThemeStyleContent> {
+fn builtin_zed_themes_dir() -> PathBuf {
+    crate::app::assets::assets_dir().join("themes/zed_builtin")
+}
+
+fn discover_builtin_zed_themes() -> Vec<(String, ThemeStyleContent)> {
+    discover_builtin_zed_themes_in(&builtin_zed_themes_dir())
+}
+
+fn discover_builtin_zed_themes_in(themes_dir: &Path) -> Vec<(String, ThemeStyleContent)> {
+    let Ok(entries) = std::fs::read_dir(themes_dir) else {
+        return Vec::new();
+    };
+
+    let mut themes = Vec::new();
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|ext| ext.to_str()) != Some("json") {
+            continue;
+        }
+
+        let Ok(json_contents) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        themes.extend(parse_manifest(&json_contents));
+    }
+
+    themes
+}
+
+fn find_zed_theme(name: &str) -> Option<ThemeStyleContent> {
     discover_zed_extension_themes()
         .into_iter()
+        .chain(discover_builtin_zed_themes())
         .find(|(theme_name, _)| theme_name == name)
         .map(|(_, style)| style)
 }
@@ -268,7 +299,7 @@ pub fn resolve(settings: &ThemeSettings, cx: &App) -> ColorTheme {
         return fallback;
     };
 
-    match find_zed_extension_theme(name) {
+    match find_zed_theme(name) {
         Some(style) => merge(&style, &fallback),
         None => fallback,
     }
@@ -406,5 +437,66 @@ mod tests {
 
         assert_eq!(theme.bg_root, Rgba::try_from("#1e1e1e").unwrap());
         assert_eq!(theme.text_primary, Rgba::try_from("#e0e0e0").unwrap());
+    }
+
+    #[test]
+    fn discovers_builtin_theme_from_synthetic_directory() {
+        let dir = std::env::temp_dir().join(format!(
+            "zex-builtin-theme-test-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("gruvbox.json"),
+            r##"{
+                "themes": [{
+                    "name": "Gruvbox Dark",
+                    "appearance": "dark",
+                    "style": {
+                        "background": "#4c4642ff",
+                        "panel.background": "#3a3735ff"
+                    }
+                }]
+            }"##,
+        )
+        .unwrap();
+
+        let themes = discover_builtin_zed_themes_in(&dir);
+
+        std::fs::remove_dir_all(&dir).ok();
+
+        assert_eq!(themes.len(), 1);
+        assert_eq!(themes[0].0, "Gruvbox Dark");
+        assert_eq!(
+            themes[0].1.background,
+            Some(Rgba::try_from("#4c4642ff").unwrap())
+        );
+        assert_eq!(
+            themes[0].1.panel_background,
+            Some(Rgba::try_from("#3a3735ff").unwrap())
+        );
+    }
+
+    #[test]
+    fn vendored_gruvbox_dark_resolves_with_distinct_panel_background() {
+        let fallback = load_bundled_default();
+
+        let style = find_zed_theme("Gruvbox Dark").expect("vendored Gruvbox Dark must resolve");
+        let merged = merge(&style, &fallback);
+
+        assert_eq!(merged.bg_root, Rgba::try_from("#4c4642ff").unwrap());
+        assert_eq!(merged.bg_panel, Rgba::try_from("#3a3735ff").unwrap());
+        assert_ne!(merged.bg_root, merged.bg_panel);
+    }
+
+    #[test]
+    fn vendored_ayu_and_one_families_resolve_too() {
+        assert!(find_zed_theme("Ayu Dark").is_some());
+        assert!(find_zed_theme("One Dark").is_some());
+        assert!(find_zed_theme("One Light").is_some());
     }
 }
