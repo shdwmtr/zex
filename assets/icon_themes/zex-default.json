@@ -1,0 +1,72 @@
+{
+  "$schema": "https://zed.dev/schema/icon_themes/v0.2.0.json",
+  "name": "Zex Default",
+  "author": "zex",
+  "themes": [
+    {
+      "name": "Zex Default",
+      "appearance": "dark",
+      "directory_icons": {
+        "collapsed": "./icons/folder.svg",
+        "expanded": "./icons/folder.svg"
+      },
+      "file_suffixes": {
+        "png": "image",
+        "jpg": "image",
+        "jpeg": "image",
+        "gif": "image",
+        "svg": "image",
+        "webp": "image",
+        "bmp": "image",
+        "txt": "document",
+        "md": "document",
+        "rst": "document",
+        "pdf": "document",
+        "doc": "document",
+        "docx": "document",
+        "odt": "document",
+        "zip": "archive",
+        "tar": "archive",
+        "gz": "archive",
+        "xz": "archive",
+        "7z": "archive",
+        "rar": "archive",
+        "bz2": "archive",
+        "mp3": "audio",
+        "wav": "audio",
+        "flac": "audio",
+        "ogg": "audio",
+        "m4a": "audio",
+        "mp4": "video",
+        "mkv": "video",
+        "webm": "video",
+        "mov": "video",
+        "avi": "video",
+        "rs": "code",
+        "py": "code",
+        "js": "code",
+        "ts": "code",
+        "c": "code",
+        "cpp": "code",
+        "h": "code",
+        "go": "code",
+        "java": "code",
+        "rb": "code",
+        "sh": "code",
+        "toml": "code",
+        "json": "code",
+        "yaml": "code",
+        "yml": "code"
+      },
+      "file_icons": {
+        "file": { "path": "./icons/file.svg" },
+        "image": { "path": "./icons/image.svg" },
+        "document": { "path": "./icons/text.svg" },
+        "archive": { "path": "./icons/archive.svg" },
+        "audio": { "path": "./icons/audio.svg" },
+        "video": { "path": "./icons/video.svg" },
+        "code": { "path": "./icons/code.svg" }
+      }
+    }
+  ]
+}

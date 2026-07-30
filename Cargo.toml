@@ -1,0 +1,22 @@
+[package]
+name = "zex"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gpui = "0.2.2"
+trash = "5.2.6"
+futures = "0.3"
+notify = "8.2.0"
+sysinfo = "0.31.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+chrono = "0.4"
+rayon = "1.12"
+rustc-hash = "2.1"
+image = "0.25"
+open = "5"
+
+[patch.crates-io]
+gpui = { path = "vendor/gpui" }

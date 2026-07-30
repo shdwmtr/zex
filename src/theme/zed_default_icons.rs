@@ -1,0 +1,265 @@
+use std::collections::HashMap;
+
+const FILE_STEMS_BY_ICON_KEY: &[(&str, &[&str])] = &[
+    ("docker", &["Containerfile", "Dockerfile"]),
+    ("ruby", &["Podfile"]),
+    ("heroku", &["Procfile"]),
+];
+
+const FILE_SUFFIXES_BY_ICON_KEY: &[(&str, &[&str])] = &[
+    ("astro", &["astro"]),
+    (
+        "audio",
+        &[
+            "aac", "flac", "m4a", "mka", "mp3", "ogg", "opus", "wav", "wma", "wv",
+        ],
+    ),
+    ("backup", &["bak"]),
+    ("ballerina", &["bal"]),
+    ("bicep", &["bicep"]),
+    ("bun", &["lockb"]),
+    ("c", &["c", "h"]),
+    ("cairo", &["cairo"]),
+    ("code", &["handlebars", "metadata", "rkt", "scm"]),
+    ("coffeescript", &["coffee"]),
+    (
+        "cpp",
+        &[
+            "c++", "h++", "cc", "cpp", "cppm", "cxx", "hh", "hpp", "hxx", "inl", "ixx",
+        ],
+    ),
+    ("crystal", &["cr", "ecr"]),
+    ("csharp", &["cs"]),
+    ("csproj", &["csproj"]),
+    ("css", &["css", "pcss", "postcss"]),
+    ("cue", &["cue"]),
+    ("dart", &["dart"]),
+    ("diff", &["diff"]),
+    (
+        "docker",
+        &[
+            "docker-compose.yml",
+            "docker-compose.yaml",
+            "compose.yml",
+            "compose.yaml",
+        ],
+    ),
+    (
+        "document",
+        &[
+            "doc", "docx", "mdx", "odp", "ods", "odt", "pdf", "ppt", "pptx", "rtf", "txt", "xls",
+            "xlsx",
+        ],
+    ),
+    ("editorconfig", &["editorconfig"]),
+    ("elixir", &["eex", "ex", "exs", "heex", "leex", "neex"]),
+    ("elm", &["elm"]),
+    (
+        "erlang",
+        &[
+            "Emakefile",
+            "app.src",
+            "erl",
+            "escript",
+            "hrl",
+            "rebar.config",
+            "xrl",
+            "yrl",
+        ],
+    ),
+    (
+        "eslint",
+        &[
+            "eslint.config.cjs",
+            "eslint.config.cts",
+            "eslint.config.js",
+            "eslint.config.mjs",
+            "eslint.config.mts",
+            "eslint.config.ts",
+            "eslintrc",
+            "eslintrc.js",
+            "eslintrc.json",
+        ],
+    ),
+    ("font", &["otf", "ttf", "woff", "woff2"]),
+    ("fsharp", &["fs"]),
+    ("fsproj", &["fsproj"]),
+    ("gitlab", &["gitlab-ci.yml", "gitlab-ci.yaml"]),
+    ("gleam", &["gleam"]),
+    ("go", &["go", "mod", "work"]),
+    ("graphql", &["gql", "graphql", "graphqls"]),
+    ("haskell", &["hs"]),
+    ("hcl", &["hcl"]),
+    (
+        "helm",
+        &[
+            "helmfile.yaml",
+            "helmfile.yml",
+            "Chart.yaml",
+            "Chart.yml",
+            "Chart.lock",
+            "values.yaml",
+            "values.yml",
+            "requirements.yaml",
+            "requirements.yml",
+            "tpl",
+        ],
+    ),
+    ("html", &["htm", "html"]),
+    (
+        "image",
+        &[
+            "avif", "bmp", "gif", "heic", "heif", "ico", "j2k", "jfif", "jp2", "jpeg", "jpg",
+            "jxl", "png", "psd", "qoi", "svg", "tiff", "webp",
+        ],
+    ),
+    ("ipynb", &["ipynb"]),
+    ("java", &["java"]),
+    ("javascript", &["cjs", "js", "mjs"]),
+    ("json", &["json", "jsonc"]),
+    ("julia", &["jl"]),
+    ("kdl", &["kdl"]),
+    ("kotlin", &["kt"]),
+    ("lock", &["lock"]),
+    ("log", &["log"]),
+    ("lua", &["lua"]),
+    ("luau", &["luau"]),
+    ("markdown", &["markdown", "md"]),
+    ("metal", &["metal"]),
+    ("nim", &["nim", "nims", "nimble"]),
+    ("nix", &["nix"]),
+    ("ocaml", &["ml", "mli", "mlx"]),
+    ("odin", &["odin"]),
+    ("php", &["php"]),
+    (
+        "prettier",
+        &[
+            "prettier.config.cjs",
+            "prettier.config.js",
+            "prettier.config.mjs",
+            "prettierignore",
+            "prettierrc",
+            "prettierrc.cjs",
+            "prettierrc.js",
+            "prettierrc.json",
+            "prettierrc.json5",
+            "prettierrc.mjs",
+            "prettierrc.toml",
+            "prettierrc.yaml",
+            "prettierrc.yml",
+        ],
+    ),
+    ("prisma", &["prisma"]),
+    ("puppet", &["pp"]),
+    ("python", &["py"]),
+    ("r", &["r", "R"]),
+    ("react", &["cjsx", "ctsx", "jsx", "mjsx", "mtsx", "tsx"]),
+    ("roc", &["roc"]),
+    ("ruby", &["rb"]),
+    ("rust", &["rs"]),
+    ("sass", &["sass", "scss"]),
+    ("scala", &["scala", "sc"]),
+    ("settings", &["conf", "ini"]),
+    ("solidity", &["sol"]),
+    (
+        "storage",
+        &[
+            "accdb", "csv", "dat", "db", "dbf", "dll", "fmp", "fp7", "frm", "gdb", "ib", "ldf",
+            "mdb", "mdf", "myd", "myi", "pdb", "RData", "rdata", "sav", "sdf", "sql", "sqlite",
+            "tsv",
+        ],
+    ),
+    (
+        "stylelint",
+        &[
+            "stylelint.config.cjs",
+            "stylelint.config.js",
+            "stylelint.config.mjs",
+            "stylelintignore",
+            "stylelintrc",
+            "stylelintrc.cjs",
+            "stylelintrc.js",
+            "stylelintrc.json",
+            "stylelintrc.mjs",
+            "stylelintrc.yaml",
+            "stylelintrc.yml",
+        ],
+    ),
+    ("surrealql", &["surql"]),
+    ("svelte", &["svelte"]),
+    ("swift", &["swift"]),
+    ("tcl", &["tcl"]),
+    ("template", &["hbs", "plist", "xml"]),
+    (
+        "terminal",
+        &[
+            "bash",
+            "bash_aliases",
+            "bash_login",
+            "bash_logout",
+            "bash_profile",
+            "bashrc",
+            "fish",
+            "nu",
+            "profile",
+            "ps1",
+            "sh",
+            "zlogin",
+            "zlogout",
+            "zprofile",
+            "zsh",
+            "zsh_aliases",
+            "zsh_histfile",
+            "zsh_history",
+            "zshenv",
+            "zshrc",
+        ],
+    ),
+    ("terraform", &["tf", "tfvars"]),
+    ("toml", &["toml"]),
+    ("typescript", &["cts", "mts", "ts"]),
+    ("v", &["v", "vsh", "vv"]),
+    (
+        "vcs",
+        &[
+            "COMMIT_EDITMSG",
+            "EDIT_DESCRIPTION",
+            "MERGE_MSG",
+            "NOTES_EDITMSG",
+            "TAG_EDITMSG",
+            "gitattributes",
+            "gitignore",
+            "gitkeep",
+            "gitmodules",
+        ],
+    ),
+    ("vbproj", &["vbproj"]),
+    ("video", &["avi", "m4v", "mkv", "mov", "mp4", "webm", "wmv"]),
+    ("vs_sln", &["sln"]),
+    ("vs_suo", &["suo"]),
+    ("vue", &["vue"]),
+    ("vyper", &["vy", "vyi"]),
+    ("wgsl", &["wgsl"]),
+    ("yaml", &["yaml", "yml"]),
+    ("zig", &["zig"]),
+];
+
+fn icon_keys_by_association(
+    associations_by_icon_key: &[(&str, &[&str])],
+) -> HashMap<String, String> {
+    let mut map = HashMap::new();
+    for (icon_key, associations) in associations_by_icon_key {
+        for association in *associations {
+            map.insert((*association).to_string(), (*icon_key).to_string());
+        }
+    }
+    map
+}
+
+pub fn file_stems() -> HashMap<String, String> {
+    icon_keys_by_association(FILE_STEMS_BY_ICON_KEY)
+}
+
+pub fn file_suffixes() -> HashMap<String, String> {
+    icon_keys_by_association(FILE_SUFFIXES_BY_ICON_KEY)
+}
