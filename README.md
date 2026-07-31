@@ -1,22 +1,22 @@
-# zex (Z-Explorer)
+# Z-Explorer (zex)
 
-A fast, keyboard-first file explorer, built on [gpui](https://www.gpui.rs/) — the same GPU-accelerated UI framework that powers Zed.
+A fast, keyboard-first file explorer, built using the same [GPU-accelerated UI framework that powers Zed](https://www.gpui.rs/).
 
 Most file managers either try to be a full desktop shell or a bare-bones list of files. zex sits in between: a native, single-purpose window for moving things around your filesystem, with a Zed-flavored dark UI and no browser hiding underneath it.
 
 ## Features
 
-- **Keyboard-driven** — navigate, select, and act without reaching for the mouse (see [Keybindings](#keybindings))
+- **Keyboard-driven** navigate, select, and act without reaching for the mouse (see [Keybindings](#keybindings))
 - **Cut / copy / paste** with a real clipboard, not a re-implemented one
 - **Undo / redo** for file operations, not just text
-- **Trash, not delete** — files go to the system trash and can come back
+- **Trash, not delete** files go to the system trash and can come back
 - **Bulk operations** with progress and cancellation for large copies/moves
 - **Drag and drop**, in and out of the app
 - **Custom icon themes**, JSON-defined, Zed-schema compatible
 - **Custom color themes**, same Zed-schema compatibility, including themes installed via Zed extensions
 - **Configurable sidebar** with sections and pinned locations
 - **Client-side window decorations** on Linux, native chrome elsewhere
-- **Git status** (opt-in) — per-file status coloring/badges, folder aggregation, and a branch indicator, backed by the real `git` CLI
+- **Git status** (opt-in) per-file status coloring/badges, folder aggregation, and a branch indicator, backed by the real `git` CLI
 
 ## Installing
 
