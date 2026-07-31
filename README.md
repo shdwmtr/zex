@@ -1,11 +1,10 @@
 # Z-Explorer (zex)
 
-A fast, keyboard-first file explorer with a built-in disk usage analyzer, built using the same [GPU-accelerated UI framework that powers Zed](https://www.gpui.rs/).
-
-A native, single-purpose window for moving things around your filesystem and seeing where your disk space went, with a Zed-flavored dark UI and no browser hiding underneath it.
+A blazingly-fast file explorer/disk usage analyzer companion for [Zed Editor](https://github.com/zed-industries/zed), built using the same [GPUI renderer framework](https://www.gpui.rs/).
 
 ## Features
 
+- **Built
 - **Keyboard-driven** navigate, select, and act without reaching for the mouse (see [Keybindings](#keybindings))
 - **Cut / copy / paste** with a real clipboard, not a re-implemented one
 - **Undo / redo** for file operations, not just text
