@@ -1,8 +1,8 @@
 # Z-Explorer (zex)
 
-A fast, keyboard-first file explorer, built using the same [GPU-accelerated UI framework that powers Zed](https://www.gpui.rs/).
+A fast, keyboard-first file explorer with a built-in disk usage analyzer, built using the same [GPU-accelerated UI framework that powers Zed](https://www.gpui.rs/).
 
-Most file managers either try to be a full desktop shell or a bare-bones list of files. zex sits in between: a native, single-purpose window for moving things around your filesystem, with a Zed-flavored dark UI and no browser hiding underneath it.
+A native, single-purpose window for moving things around your filesystem and seeing where your disk space went, with a Zed-flavored dark UI and no browser hiding underneath it.
 
 ## Features
 
