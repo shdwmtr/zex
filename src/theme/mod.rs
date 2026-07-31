@@ -9,7 +9,9 @@ pub mod zed_default_icons;
 #[derive(Clone, Copy, Debug)]
 pub struct ColorTheme {
     pub bg_root: Rgba,
+    pub bg_window: Rgba,
     pub bg_panel: Rgba,
+    pub bg_elevated: Rgba,
     pub bg_bar: Rgba,
     pub bg_header: Rgba,
     pub bg_hover: Rgba,
@@ -38,7 +40,9 @@ impl ColorTheme {
     pub fn zex_default() -> Self {
         Self {
             bg_root: rgb(0x1e1e1e),
+            bg_window: rgb(0x1e1e1e),
             bg_panel: rgb(0x252525),
+            bg_elevated: rgb(0x2c2c2c),
             bg_bar: rgb(0x2a2a2a),
             bg_header: rgb(0x202020),
             bg_hover: rgb(0x2d2d2d),
@@ -104,8 +108,14 @@ impl Global for UiFont {}
 pub fn bg_root() -> Rgba {
     active().bg_root
 }
+pub fn bg_window() -> Rgba {
+    active().bg_window
+}
 pub fn bg_panel() -> Rgba {
     active().bg_panel
+}
+pub fn bg_elevated() -> Rgba {
+    active().bg_elevated
 }
 pub fn bg_bar() -> Rgba {
     active().bg_bar

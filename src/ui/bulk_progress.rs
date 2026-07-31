@@ -48,7 +48,7 @@ pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> Option<impl IntoEl
                     .gap_3()
                     .w(px(380.0))
                     .p_4()
-                    .bg(theme::bg_panel())
+                    .bg(theme::bg_elevated())
                     .border_1()
                     .border_color(theme::border())
                     .shadow(vec![BoxShadow {

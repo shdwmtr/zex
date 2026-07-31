@@ -234,7 +234,7 @@ fn suggestions_popup(
         .right_0()
         .flex()
         .flex_col()
-        .bg(theme::bg_panel())
+        .bg(theme::bg_elevated())
         .border_1()
         .border_color(theme::border())
         .rounded_md()

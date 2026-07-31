@@ -272,7 +272,7 @@ impl Explorer {
             .relative()
             .flex()
             .flex_row()
-            .bg(theme::bg_root())
+            .bg(theme::bg_window())
             .text_color(theme::text_primary())
             .when(self.sidebar_should_render(), |this| {
                 this.child(sidebar::render(self, cx))
@@ -283,6 +283,7 @@ impl Explorer {
                     .flex_col()
                     .flex_1()
                     .size_full()
+                    .bg(theme::bg_root())
                     .child(path_bar::render(self, cx))
                     .children(self.op_error.as_ref().map(|message| {
                         div()

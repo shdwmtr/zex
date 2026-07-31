@@ -172,7 +172,7 @@ pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> Option<impl IntoEl
                     .flex()
                     .flex_col()
                     .w(px(420.0))
-                    .bg(theme::bg_panel())
+                    .bg(theme::bg_elevated())
                     .border_1()
                     .border_color(theme::border())
                     .shadow(vec![BoxShadow {

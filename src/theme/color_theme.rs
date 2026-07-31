@@ -23,8 +23,12 @@ struct ThemeEntryContent {
 struct ThemeStyleContent {
     #[serde(default)]
     background: Option<Rgba>,
+    #[serde(default, rename = "editor.background")]
+    editor_background: Option<Rgba>,
     #[serde(default, rename = "panel.background")]
     panel_background: Option<Rgba>,
+    #[serde(default, rename = "elevated_surface.background")]
+    elevated_surface_background: Option<Rgba>,
     #[serde(default, rename = "status_bar.background")]
     status_bar_background: Option<Rgba>,
     #[serde(default, rename = "toolbar.background")]
@@ -181,10 +185,17 @@ fn load_bundled_default() -> ColorTheme {
         .1;
 
     ColorTheme {
-        bg_root: style.background.expect("bundled theme must set background"),
+        bg_root: style
+            .editor_background
+            .or(style.background)
+            .expect("bundled theme must set background or editor.background"),
+        bg_window: style.background.expect("bundled theme must set background"),
         bg_panel: style
             .panel_background
             .expect("bundled theme must set panel.background"),
+        bg_elevated: style
+            .elevated_surface_background
+            .expect("bundled theme must set elevated_surface.background"),
         bg_bar: style
             .status_bar_background
             .expect("bundled theme must set status_bar.background"),
@@ -237,8 +248,15 @@ fn load_bundled_default() -> ColorTheme {
 
 fn merge(style: &ThemeStyleContent, fallback: &ColorTheme) -> ColorTheme {
     ColorTheme {
-        bg_root: style.background.unwrap_or(fallback.bg_root),
+        bg_root: style
+            .editor_background
+            .or(style.background)
+            .unwrap_or(fallback.bg_root),
+        bg_window: style.background.unwrap_or(fallback.bg_window),
         bg_panel: style.panel_background.unwrap_or(fallback.bg_panel),
+        bg_elevated: style
+            .elevated_surface_background
+            .unwrap_or(fallback.bg_elevated),
         bg_bar: style.status_bar_background.unwrap_or(fallback.bg_bar),
         bg_header: style.toolbar_background.unwrap_or(fallback.bg_header),
         bg_hover: style.element_hover.unwrap_or(fallback.bg_hover),
@@ -488,9 +506,110 @@ mod tests {
         let style = find_zed_theme("Gruvbox Dark").expect("vendored Gruvbox Dark must resolve");
         let merged = merge(&style, &fallback);
 
-        assert_eq!(merged.bg_root, Rgba::try_from("#4c4642ff").unwrap());
+        assert_eq!(merged.bg_root, Rgba::try_from("#282828ff").unwrap());
         assert_eq!(merged.bg_panel, Rgba::try_from("#3a3735ff").unwrap());
         assert_ne!(merged.bg_root, merged.bg_panel);
+    }
+
+    #[test]
+    fn bg_root_prefers_editor_background_over_generic_background() {
+        let fallback = load_bundled_default();
+        let json = r##"{
+            "themes": [{
+                "name": "Split",
+                "appearance": "dark",
+                "style": {
+                    "background": "#141414",
+                    "panel.background": "#141414",
+                    "editor.background": "#1a1a1a"
+                }
+            }]
+        }"##;
+        let style = &parse_manifest(json)[0].1;
+
+        let merged = merge(style, &fallback);
+
+        assert_eq!(merged.bg_root, Rgba::try_from("#1a1a1a").unwrap());
+        assert_eq!(merged.bg_panel, Rgba::try_from("#141414").unwrap());
+        assert_eq!(merged.bg_window, Rgba::try_from("#141414").unwrap());
+    }
+
+    #[test]
+    fn bg_window_stays_the_generic_background_when_panel_background_is_transparent() {
+        let fallback = load_bundled_default();
+        let json = r##"{
+            "themes": [{
+                "name": "Min Dark (Solid)",
+                "appearance": "dark",
+                "style": {
+                    "background": "#141414",
+                    "panel.background": "#00000000",
+                    "editor.background": "#1a1a1a"
+                }
+            }]
+        }"##;
+        let style = &parse_manifest(json)[0].1;
+
+        let merged = merge(style, &fallback);
+
+        assert_eq!(merged.bg_window, Rgba::try_from("#141414").unwrap());
+        assert_eq!(merged.bg_root, Rgba::try_from("#1a1a1a").unwrap());
+        assert_eq!(merged.bg_panel, Rgba::try_from("#00000000").unwrap());
+    }
+
+    #[test]
+    fn bg_elevated_falls_back_to_bundled_default_when_theme_omits_it() {
+        let fallback = load_bundled_default();
+        let json = r##"{
+            "themes": [{
+                "name": "Min Dark (Solid)",
+                "appearance": "dark",
+                "style": {
+                    "background": "#141414",
+                    "panel.background": "#00000000"
+                }
+            }]
+        }"##;
+        let style = &parse_manifest(json)[0].1;
+
+        let merged = merge(style, &fallback);
+
+        assert_eq!(merged.bg_elevated, fallback.bg_elevated);
+        assert_ne!(merged.bg_elevated, merged.bg_panel);
+    }
+
+    #[test]
+    fn bg_elevated_uses_the_theme_value_when_present() {
+        let fallback = load_bundled_default();
+        let json = r##"{
+            "themes": [{
+                "name": "Ayu-ish",
+                "appearance": "dark",
+                "style": { "elevated_surface.background": "#1f2127" }
+            }]
+        }"##;
+        let style = &parse_manifest(json)[0].1;
+
+        let merged = merge(style, &fallback);
+
+        assert_eq!(merged.bg_elevated, Rgba::try_from("#1f2127").unwrap());
+    }
+
+    #[test]
+    fn bg_root_falls_back_to_generic_background_when_editor_background_absent() {
+        let fallback = load_bundled_default();
+        let json = r##"{
+            "themes": [{
+                "name": "NoEditorBg",
+                "appearance": "dark",
+                "style": { "background": "#101010" }
+            }]
+        }"##;
+        let style = &parse_manifest(json)[0].1;
+
+        let merged = merge(style, &fallback);
+
+        assert_eq!(merged.bg_root, Rgba::try_from("#101010").unwrap());
     }
 
     #[test]

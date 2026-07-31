@@ -182,7 +182,7 @@ impl Render for PopupMenu {
             .flex()
             .flex_col()
             .py_1()
-            .bg(theme::bg_panel())
+            .bg(theme::bg_elevated())
             .border_1()
             .border_color(theme::border())
             .shadow(vec![gpui::BoxShadow {
