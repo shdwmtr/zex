@@ -23,8 +23,6 @@ Most file managers either try to be a full desktop shell or a bare-bones list of
 zex is currently source-only. You'll need a recent Rust toolchain (edition 2024).
 
 ```sh
-git clone <this-repo>
-cd zex
 cargo run --release
 ```
 
@@ -143,23 +141,6 @@ Git awareness is off by default (`git.enabled: false`) — flip it on and every 
 | `Delete` | Move to trash |
 | `Ctrl-C` / `Ctrl-X` / `Ctrl-V` | Copy / cut / paste |
 | `Ctrl-Z` / `Ctrl-Shift-Z` | Undo / redo |
-
-## Project layout
-
-```
-src/
-├── app/         window + entry point wiring
-├── explorer/    the state machine: navigation, selection, ops, undo/redo
-├── filesystem/  the boring, correct part — actual fs operations
-├── theme/       colors, fonts, icon/color theme loading
-└── ui/          gpui components: file list, sidebar, dialogs, chrome
-```
-
-`filesystem` is deliberately kept dumb and testable; `explorer` owns behavior and state; `ui` just renders it. If you're looking for where an action *happens* versus where it's *drawn*, that's the seam.
-
-## Status
-
-Early and moving. Expect rough edges, not data loss — file operations go through trash and undo before anything is treated as permanent.
 
 ## License
 
