@@ -204,7 +204,12 @@ fn spawn_scan(
 }
 
 impl Explorer {
-    pub fn open_disk_usage(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn open_disk_usage(
+        &mut self,
+        initial_root: Option<PathBuf>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let Some(disk) = crate::filesystem::disk::resolve_disk_for(self.current_dir()) else {
             self.op_error = Some("Couldn't determine the disk for the current folder".into());
             cx.notify();
@@ -218,7 +223,7 @@ impl Explorer {
 
         self.disk_usage = Some(DiskUsageState {
             scan: ScanState::Scanning { files_scanned: 0, bytes_scanned: 0 },
-            current_root: disk.mount_point.clone(),
+            current_root: initial_root.unwrap_or_else(|| disk.mount_point.clone()),
             mount_point: disk.mount_point,
             selected_row: None,
             sort_column: DiskUsageSortColumn::Size,

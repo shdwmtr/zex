@@ -1,4 +1,4 @@
-# zex
+# zex (Z-Explorer)
 
 A fast, keyboard-first file explorer, built on [gpui](https://www.gpui.rs/) — the same GPU-accelerated UI framework that powers Zed.
 
@@ -27,6 +27,24 @@ cargo run --release
 ```
 
 The `gpui` dependency is vendored under `vendor/gpui` and patched in via `Cargo.toml`, so no separate checkout is needed.
+
+## Usage
+
+```
+zex [PATH]
+zex [PATH] --disk-usage
+zex --select <FILE>
+zex --config <FILE>
+```
+
+| Argument | Effect |
+| --- | --- |
+| `PATH` | Directory to open. If `PATH` is a file, its parent directory opens with that file selected. Relative paths resolve against the current working directory; `~` is expanded. Defaults to your home directory if omitted. |
+| `--select <FILE>` | Open `FILE`'s parent directory with `FILE` selected. Can't be combined with `PATH`. |
+| `--disk-usage` | Open straight into the disk usage view, rooted at `PATH` if given (or the whole disk otherwise). |
+| `--config <FILE>` | Load settings from `FILE` instead of the default config location. |
+
+A nonexistent `PATH` or `--select` target is a hard error (nonzero exit), not a silent fall back to the home directory.
 
 ## Configuration
 

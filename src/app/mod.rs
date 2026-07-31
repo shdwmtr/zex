@@ -3,6 +3,7 @@ mod window_root;
 
 use gpui::{App, AppContext, Application, Bounds, WindowBounds, WindowOptions, px, size};
 
+use crate::cli::Startup;
 use crate::explorer::Explorer;
 use crate::keys;
 use crate::settings::Settings;
@@ -11,7 +12,7 @@ use crate::ui;
 
 use window_root::WindowRoot;
 
-pub fn run(settings: Settings) {
+pub fn run(settings: Settings, startup: Startup) {
     let icon_theme_state = icon_theme::resolve(&settings);
     let show_hidden_files = settings.show_hidden_files.unwrap_or(false);
     let sidebar_visible = settings.sidebar_visible.unwrap_or(true);
@@ -62,6 +63,7 @@ pub fn run(settings: Settings) {
                             sidebar_entries,
                             git_settings,
                             disk_usage_settings,
+                            startup,
                         )
                     });
                     cx.new(|_| WindowRoot { content: explorer })

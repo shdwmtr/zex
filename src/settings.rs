@@ -323,8 +323,10 @@ fn read_jsonc_file(path: &Path) -> Option<Value> {
     parse_jsonc(&contents).ok()
 }
 
-pub fn load() -> Settings {
-    let path = config_dir().join("zex").join("config.json");
+pub fn load(config_override: Option<&Path>) -> Settings {
+    let path = config_override
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| config_dir().join("zex").join("config.json"));
 
     let zex_value = read_jsonc_file(&path).unwrap_or_else(|| Value::Object(Default::default()));
 

@@ -23,6 +23,7 @@ use gpui::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use crate::cli::Startup;
 use crate::filesystem::entry::FsEntry;
 use crate::filesystem::trash_entry::TrashEntry;
 use crate::filesystem::undo_op::UndoOp;
@@ -132,16 +133,13 @@ impl Explorer {
         sidebar_entries: Vec<SidebarItem>,
         git_settings: GitSettings,
         disk_usage_settings: DiskUsageSettings,
+        startup: Startup,
     ) -> Self {
         let focus_handle = cx.focus_handle();
         window.focus(&focus_handle);
 
-        let home = std::env::var("HOME")
-            .map(PathBuf::from)
-            .unwrap_or_else(|_| PathBuf::from("/"));
-
         let mut this = Self {
-            history: History::new(home),
+            history: History::new(startup.start_dir),
             entries: Vec::new(),
             entry_index: FxHashMap::default(),
             trash_entries: Vec::new(),
@@ -187,6 +185,19 @@ impl Explorer {
             disk_usage: None,
         };
         this.enter_directory(cx);
+
+        if let Some(select_path) = &startup.select {
+            if let Some(entry) = this.entries.iter().find(|entry| &entry.path == select_path) {
+                let path = entry.path.clone();
+                this.selected = std::iter::once(path.clone()).collect();
+                this.focused_path = Some(path);
+            }
+        }
+
+        if startup.disk_usage {
+            this.open_disk_usage(startup.disk_usage_root, window, cx);
+        }
+
         this
     }
 }

@@ -147,7 +147,7 @@ pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoElement {
                 .child(
                     status_button("free-space-button")
                         .on_click(cx.listener(|explorer, _event: &gpui::ClickEvent, window, cx| {
-                            explorer.open_disk_usage(window, cx);
+                            explorer.open_disk_usage(None, window, cx);
                         }))
                         .child(explorer.free_space_label.clone()),
                 ),
