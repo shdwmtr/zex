@@ -18,6 +18,14 @@ rayon = "1.12"
 rustc-hash = "2.1"
 image = "0.25"
 open = "5"
+rust-embed = "8"
 
 [patch.crates-io]
 gpui = { path = "vendor/gpui" }
+
+[profile.optimized-release]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true

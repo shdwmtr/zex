@@ -5,7 +5,6 @@ use gpui::{
     px, radians, svg,
 };
 
-use crate::app::assets;
 use crate::explorer::columns::SortDirection;
 use crate::theme;
 
@@ -34,7 +33,6 @@ pub fn sort_cell(
         SortDirection::Ascending => radians(-std::f32::consts::FRAC_PI_2),
         SortDirection::Descending => radians(std::f32::consts::FRAC_PI_2),
     };
-    let icon_path = assets::assets_dir().join("icons/chevron-right.svg");
     let group_name = group_name.into();
 
     div()
@@ -57,7 +55,7 @@ pub fn sort_cell(
         .child(
             svg()
                 .flex_shrink_0()
-                .path(icon_path.to_string_lossy().into_owned())
+                .path("icons/chevron-right.svg")
                 .size(px(10.0))
                 .text_color(if is_active {
                     theme::text_primary()

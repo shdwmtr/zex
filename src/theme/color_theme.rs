@@ -139,14 +139,22 @@ fn discover_zed_extension_themes_in(extensions_dir: &Path) -> Vec<(String, Theme
     themes
 }
 
-fn builtin_zed_themes_dir() -> PathBuf {
-    crate::app::assets::assets_dir().join("themes/zed_builtin")
-}
-
 fn discover_builtin_zed_themes() -> Vec<(String, ThemeStyleContent)> {
-    discover_builtin_zed_themes_in(&builtin_zed_themes_dir())
+    let mut themes = Vec::new();
+
+    for name in crate::app::assets::Assets::list_dir("themes/zed_builtin") {
+        if !name.ends_with(".json") {
+            continue;
+        }
+        let contents =
+            crate::app::assets::Assets::read_to_string(&format!("themes/zed_builtin/{name}"));
+        themes.extend(parse_manifest(&contents));
+    }
+
+    themes
 }
 
+#[cfg(test)]
 fn discover_builtin_zed_themes_in(themes_dir: &Path) -> Vec<(String, ThemeStyleContent)> {
     let Ok(entries) = std::fs::read_dir(themes_dir) else {
         return Vec::new();
@@ -178,9 +186,7 @@ fn find_zed_theme(name: &str) -> Option<ThemeStyleContent> {
 }
 
 fn load_bundled_default() -> ColorTheme {
-    let manifest_path = crate::app::assets::assets_dir().join("themes/zex-default.json");
-    let contents = std::fs::read_to_string(&manifest_path)
-        .expect("zex's bundled color theme manifest must be present");
+    let contents = crate::app::assets::Assets::read_to_string("themes/zex-default.json");
 
     let style = parse_manifest(&contents)
         .into_iter()

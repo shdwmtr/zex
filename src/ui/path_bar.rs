@@ -5,7 +5,6 @@ use gpui::{
     deferred, div, prelude::*, px, svg,
 };
 
-use crate::app::assets;
 use crate::explorer::Explorer;
 use crate::theme;
 use crate::ui::context_menu;
@@ -40,8 +39,6 @@ pub fn nav_button(
     } else {
         theme::text_faint()
     };
-    let icon_path = assets::assets_dir().join(icon_asset);
-
     let button = div()
         .id(id)
         .flex()
@@ -51,7 +48,7 @@ pub fn nav_button(
         .rounded_md()
         .child(
             svg()
-                .path(icon_path.to_string_lossy().into_owned())
+                .path(icon_asset.to_string())
                 .size(px(14.0))
                 .text_color(color),
         );

@@ -1,50 +1,50 @@
 use std::borrow::Cow;
-use std::fs;
-use std::path::{Path, PathBuf};
 
 use gpui::{AssetSource, Result, SharedString};
+use rust_embed::RustEmbed;
 
-pub fn assets_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets")
-}
+#[derive(RustEmbed)]
+#[folder = "assets"]
+struct EmbeddedAssets;
 
-pub struct Assets {
-    pub base: PathBuf,
-}
+pub struct Assets;
 
 impl Assets {
     pub fn new() -> Self {
-        Self { base: assets_dir() }
+        Self
     }
 
-    fn resolve(&self, path: &str) -> PathBuf {
-        if Path::new(path).is_absolute() {
-            PathBuf::from(path)
-        } else {
-            self.base.join(path)
-        }
+    pub fn get(path: &str) -> Option<Cow<'static, [u8]>> {
+        EmbeddedAssets::get(path).map(|file| file.data)
+    }
+
+    pub fn read_to_string(path: &str) -> String {
+        let data = Self::get(path).unwrap_or_else(|| panic!("zex asset {path:?} must be present"));
+        String::from_utf8(data.into_owned())
+            .unwrap_or_else(|_| panic!("zex asset {path:?} must be valid UTF-8"))
+    }
+
+    pub fn list_dir(prefix: &str) -> Vec<SharedString> {
+        let prefix = prefix.strip_suffix('/').unwrap_or(prefix);
+        let mut names: Vec<SharedString> = EmbeddedAssets::iter()
+            .filter_map(|file| {
+                let rest = file.strip_prefix(prefix)?.strip_prefix('/')?;
+                let name = rest.split('/').next()?;
+                Some(SharedString::from(name.to_string()))
+            })
+            .collect();
+        names.sort();
+        names.dedup();
+        names
     }
 }
 
 impl AssetSource for Assets {
     fn load(&self, path: &str) -> Result<Option<Cow<'static, [u8]>>> {
-        fs::read(self.resolve(path))
-            .map(|data| Some(Cow::Owned(data)))
-            .map_err(|err| err.into())
+        Ok(Self::get(path))
     }
 
     fn list(&self, path: &str) -> Result<Vec<SharedString>> {
-        fs::read_dir(self.resolve(path))
-            .map(|entries| {
-                entries
-                    .filter_map(|entry| {
-                        entry
-                            .ok()
-                            .and_then(|entry| entry.file_name().into_string().ok())
-                            .map(SharedString::from)
-                    })
-                    .collect()
-            })
-            .map_err(|err| err.into())
+        Ok(Self::list_dir(path))
     }
 }

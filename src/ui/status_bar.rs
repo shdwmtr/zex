@@ -1,6 +1,5 @@
 use gpui::{Context, ElementId, IntoElement, Stateful, div, prelude::*, px, svg};
 
-use crate::app::assets;
 use crate::explorer::Explorer;
 use crate::filesystem::entry::format_size;
 use crate::theme;
@@ -61,8 +60,6 @@ fn git_indicator(explorer: &Explorer, cx: &Context<Explorer>) -> Option<impl Int
             label
         });
 
-    let icon_path = assets::assets_dir().join("icons/git-branch.svg");
-
     Some(
         status_button("git-branch-button")
             .on_click(cx.listener(|explorer, _event: &gpui::ClickEvent, _window, cx| {
@@ -71,7 +68,7 @@ fn git_indicator(explorer: &Explorer, cx: &Context<Explorer>) -> Option<impl Int
             .child(
                 svg()
                     .flex_shrink_0()
-                    .path(icon_path.to_string_lossy().into_owned())
+                    .path("icons/git-branch.svg")
                     .size(px(12.0))
                     .text_color(theme::text_muted()),
             )

@@ -168,12 +168,9 @@ pub fn resolve(settings: &crate::settings::Settings) -> IconThemeState {
 }
 
 pub fn load_bundled_default() -> LoadedIconTheme {
-    let assets_dir = crate::app::assets::assets_dir();
-    let manifest_path = assets_dir.join("icon_themes/zex-default.json");
-    let contents = std::fs::read_to_string(&manifest_path)
-        .expect("zex's bundled icon theme manifest must be present");
+    let contents = crate::app::assets::Assets::read_to_string("icon_themes/zex-default.json");
 
-    parse_manifest(&contents, &assets_dir)
+    parse_manifest(&contents, Path::new(""))
         .into_iter()
         .next()
         .expect("zex's bundled icon theme manifest must define at least one theme")
@@ -448,7 +445,7 @@ pub fn rasterize_drag_icon(
 }
 
 fn symlink_badge_icon_path() -> PathBuf {
-    crate::app::assets::assets_dir().join("icons/symlink-badge.svg")
+    PathBuf::from("icons/symlink-badge.svg")
 }
 
 fn with_symlink_badge(icon: AnyElement, entry: &FsEntry, size: Pixels) -> AnyElement {
@@ -813,8 +810,12 @@ mod tests {
         let theme = load_bundled_default();
 
         assert_eq!(theme.name, "Zex Default");
-        assert!(theme.directory_icon.as_ref().is_some_and(|p| p.exists()));
-        assert!(theme.file_icons.get("file").is_some_and(|p| p.exists()));
+        assert!(theme.directory_icon.as_ref().is_some_and(|p| {
+            crate::app::assets::Assets::get(&p.to_string_lossy()).is_some()
+        }));
+        assert!(theme.file_icons.get("file").is_some_and(|p| {
+            crate::app::assets::Assets::get(&p.to_string_lossy()).is_some()
+        }));
         assert_eq!(theme.file_suffixes.get("rs"), Some(&"code".to_string()));
     }
 }

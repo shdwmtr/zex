@@ -7453,6 +7453,7 @@ dependencies = [
  "notify",
  "open",
  "rayon",
+ "rust-embed",
  "rustc-hash 2.1.3",
  "serde",
  "serde_json",
