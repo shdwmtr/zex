@@ -131,6 +131,10 @@ impl Workspace {
     fn subscribe_pane(&mut self, pane: &Entity<Pane>, cx: &mut Context<Self>) {
         let subscription = cx.subscribe(pane, |workspace, pane, event, cx| match event {
             PaneEvent::Empty => workspace.remove_pane(pane.entity_id(), cx),
+            PaneEvent::TabDropped => {
+                workspace.drag_hover = None;
+                cx.notify();
+            }
         });
         self.pane_subscriptions.push(subscription);
     }

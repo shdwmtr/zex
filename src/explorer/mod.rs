@@ -305,9 +305,9 @@ impl Explorer {
                             .right_1()
                             .cursor_pointer()
                             .px_2()
-                            .on_click(cx.listener(|explorer, _, _, cx| {
-                                explorer.dismiss_op_error(cx)
-                            }))
+                            .on_click(
+                                cx.listener(|explorer, _, _, cx| explorer.dismiss_op_error(cx)),
+                            )
                             .child("×"),
                     )
             }))

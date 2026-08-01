@@ -17,6 +17,9 @@ pub enum PaneEvent {
     /// The pane's last tab was closed and it would like to be removed from the split tree.
     /// The workspace vetoes this if the pane is the only one left.
     Empty,
+    /// A tab was dropped directly onto a pane's tab strip. This bypasses `Workspace::handle_tab_drop`,
+    /// so it's the tab strip's responsibility to tell the workspace the drag ended.
+    TabDropped,
 }
 
 pub struct Pane {
@@ -243,6 +246,7 @@ impl Pane {
                 {
                     pane.insert_tab(index, explorer, cx);
                 }
+                cx.emit(PaneEvent::TabDropped);
                 cx.notify();
             }))
             .child(div().w(px(18.0)).flex_shrink_0())

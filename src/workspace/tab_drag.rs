@@ -59,11 +59,7 @@ pub fn zone_for_position(bounds: Bounds<Pixels>, position: Point<Pixels>) -> Spl
 }
 
 pub fn zone_highlight(zone: SplitZone) -> impl IntoElement {
-    let mut overlay = div()
-        .absolute()
-        .bg(theme::drop_target_fill())
-        .border_2()
-        .border_color(theme::drop_target_border());
+    let mut overlay = div().absolute().bg(theme::drop_target_fill());
 
     overlay = match zone {
         SplitZone::Left => overlay.top_0().bottom_0().left_0().w(gpui::relative(0.5)),
