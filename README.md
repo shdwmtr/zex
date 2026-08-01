@@ -1,4 +1,4 @@
-<img height="70" alt="image" align="right" src="https://github.com/user-attachments/assets/34fab8fb-c8c4-4b8d-a0d8-43bd0ca5b1bd" />
+<img height="60" alt="image" align="right" src="https://github.com/user-attachments/assets/34fab8fb-c8c4-4b8d-a0d8-43bd0ca5b1bd" />
 
 # Z-Explorer (zex)
 
