@@ -223,7 +223,7 @@ impl Explorer {
 
         self.disk_usage = Some(DiskUsageState {
             scan: ScanState::Scanning { files_scanned: 0, bytes_scanned: 0 },
-            current_root: initial_root.unwrap_or_else(|| disk.mount_point.clone()),
+            current_root: initial_root.unwrap_or_else(|| self.current_dir().to_path_buf()),
             mount_point: disk.mount_point,
             selected_row: None,
             sort_column: DiskUsageSortColumn::Size,
@@ -249,6 +249,7 @@ impl Explorer {
             state.cancel.store(true, Ordering::SeqCst);
             dispose_tree(&mut state.scan, cx);
             window.focus(&self.focus_handle);
+            self.enter_directory(cx);
             cx.notify();
         }
     }
@@ -274,8 +275,9 @@ impl Explorer {
         if tree.get(id).kind != NodeKind::Directory {
             return;
         }
-        state.current_root = path;
+        state.current_root = path.clone();
         recompute_wedges(state);
+        self.history.navigate(path);
         cx.notify();
     }
 
@@ -284,8 +286,10 @@ impl Explorer {
         let ScanState::Ready { tree } = &state.scan else { return };
         let Some(id) = tree.find(&state.current_root) else { return };
         let Some(parent_id) = tree.get(id).parent else { return };
-        state.current_root = tree.get(parent_id).path.clone();
+        let parent_path = tree.get(parent_id).path.clone();
+        state.current_root = parent_path.clone();
         recompute_wedges(state);
+        self.history.navigate(parent_path);
         cx.notify();
     }
 

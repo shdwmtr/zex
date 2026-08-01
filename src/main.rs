@@ -1,5 +1,6 @@
 mod app;
 mod cli;
+mod config_docs;
 mod explorer;
 mod filesystem;
 mod git;
@@ -15,6 +16,19 @@ use clap::Parser;
 
 fn main() {
     let cli = cli::Cli::parse();
+
+    if let Some(cli::Command::Config { key }) = &cli.command {
+        match key {
+            None => config_docs::print_list(),
+            Some(key) => {
+                if let Err(err) = config_docs::print_key(key) {
+                    eprintln!("{err}");
+                    std::process::exit(1);
+                }
+            }
+        }
+        return;
+    }
 
     let default_start_dir = std::env::var("HOME")
         .map(PathBuf::from)

@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[command(name = "zex", version, about = "A fast, keyboard-driven file explorer")]
@@ -21,6 +21,18 @@ pub struct Cli {
     /// Load settings from FILE instead of the default config location.
     #[arg(long, value_name = "FILE")]
     config: Option<PathBuf>,
+
+    #[command(subcommand)]
+    pub command: Option<Command>,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum Command {
+    /// List config keys, or show docs for one (e.g. `zex config inherit_from_zed`).
+    Config {
+        /// A config key, e.g. "theme.mode" or "git.status.badge_style".
+        key: Option<String>,
+    },
 }
 
 #[derive(Debug)]
@@ -105,7 +117,7 @@ mod tests {
     use super::*;
 
     fn cli(path: Option<PathBuf>, select: Option<PathBuf>) -> Cli {
-        Cli { path, select, disk_usage: false, config: None }
+        Cli { path, select, disk_usage: false, config: None, command: None }
     }
 
     #[test]
