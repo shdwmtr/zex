@@ -8,7 +8,7 @@ Naturally, Zex picks up user-installed Zed themes/icons themes automatically; it
 
 ![](https://github.com/user-attachments/assets/5fb253a2-c27e-4d4c-8b1e-4b364da86564)
 
-## Usage
+### Getting Started
 
 ```
 $ zex --help
@@ -43,6 +43,10 @@ $ zex config
 # docs, type, and default for one key   
 $ zex config theme.mode
 ```
+
+## Contributions
+
+Contributions are welcome; there's plenty of room to help: new features, bug fixes, performance improvements, or just cleaning up rough edges. Open a PR, we'll take a look.
 
 ## License
 
