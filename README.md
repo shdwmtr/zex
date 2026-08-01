@@ -1,6 +1,6 @@
 # Z-Explorer (zex)
 
-An extremelt fast file explorer/disk usage analyzer companion for [Zed Editor](https://github.com/zed-industries/zed), built using the same [GPUI renderer framework](https://www.gpui.rs/).
+An extremely fast file explorer/disk usage analyzer companion for [Zed Editor](https://github.com/zed-industries/zed), built using the same [GPUI renderer framework](https://www.gpui.rs/).
 
 Naturally, Zex picks up user-installed Zed themes/icons themes automatically; its a complete visual match.  
 
