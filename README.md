@@ -19,6 +19,18 @@ $ zex --select <FILE>
 $ zex --config <FILE>
 ```
 
+## Installation
+
+Zex is currently source-only until the 1.0.0 release.
+
+```bash
+# Run zexplorer
+$ cargo run
+
+# Build optimized release
+$ cargo build --profile optimized-release
+```
+
 ## Configuration
 
 Zex reads a JSONC config from `$XDG_CONFIG_HOME/zex/config.json`, falling back to `~/.config/zex/config.json`. Every field is optional, and comments/trailing commas are allowed.
