@@ -11,34 +11,26 @@ Naturally, Zex picks up user-installed Zed themes/icons themes automatically; it
 ## Usage
 
 ```
-zex --help
+$ zex --help
+
+$ zex [PATH]
+$ zex [PATH] --disk-usage
+$ zex --select <FILE>
+$ zex --config <FILE>
 ```
 
 ## Configuration
 
-zex reads a JSONC config from `$XDG_CONFIG_HOME/zex/config.json` (falling back to `~/.config/zex/config.json`) — icon/color themes, fonts, the sidebar, and git status integration all live there. Every field is optional, and comments/trailing commas are allowed.
+Zex reads a JSONC config from `$XDG_CONFIG_HOME/zex/config.json`, falling back to `~/.config/zex/config.json`. Every field is optional, and comments/trailing commas are allowed.
 
-The full field reference lives in the CLI, not here:
+The full field reference lives in the CLI:
 
 ```sh
-zex config              # list every key, grouped by section
-zex config theme.mode   # docs, type, and default for one key
+# list every key, grouped by section
+$ zex config
+# docs, type, and default for one key   
+$ zex config theme.mode
 ```
-
-## Keybindings
-
-| Key | Action |
-| --- | --- |
-| `↑` / `↓` | Move selection |
-| `Enter` | Open |
-| `Backspace` | Go up a directory |
-| `←` / `→` | Back / forward |
-| `Ctrl-A` | Select all |
-| `Ctrl-H` | Toggle hidden files |
-| `F2` | Rename |
-| `Delete` | Move to trash |
-| `Ctrl-C` / `Ctrl-X` / `Ctrl-V` | Copy / cut / paste |
-| `Ctrl-Z` / `Ctrl-Shift-Z` | Undo / redo |
 
 ## License
 
