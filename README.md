@@ -1,49 +1,18 @@
 # Z-Explorer (zex)
 
-A blazingly-fast file explorer/disk usage analyzer companion for [Zed Editor](https://github.com/zed-industries/zed), built using the same [GPUI renderer framework](https://www.gpui.rs/).
+An extremelt fast file explorer/disk usage analyzer companion for [Zed Editor](https://github.com/zed-industries/zed), built using the same [GPUI renderer framework](https://www.gpui.rs/).
 
-## Features
+Naturally, Zex picks up user-installed Zed themes/icons themes automatically; its a complete visual match.  
 
-- **Built
-- **Keyboard-driven** navigate, select, and act without reaching for the mouse (see [Keybindings](#keybindings))
-- **Cut / copy / paste** with a real clipboard, not a re-implemented one
-- **Undo / redo** for file operations, not just text
-- **Trash, not delete** files go to the system trash and can come back
-- **Bulk operations** with progress and cancellation for large copies/moves
-- **Drag and drop**, in and out of the app
-- **Custom icon themes**, JSON-defined, Zed-schema compatible
-- **Custom color themes**, same Zed-schema compatibility, including themes installed via Zed extensions
-- **Configurable sidebar** with sections and pinned locations
-- **Client-side window decorations** on Linux, native chrome elsewhere
-- **Git status** (opt-in) per-file status coloring/badges, folder aggregation, and a branch indicator, backed by the real `git` CLI
+### Preview (Zed on left, Zex on right)
 
-## Installing
-
-zex is currently source-only. You'll need a recent Rust toolchain (edition 2024).
-
-```sh
-cargo run --release
-```
-
-The `gpui` dependency is vendored under `vendor/gpui` and patched in via `Cargo.toml`, so no separate checkout is needed.
+![](https://github.com/user-attachments/assets/5fb253a2-c27e-4d4c-8b1e-4b364da86564)
 
 ## Usage
 
 ```
-zex [PATH]
-zex [PATH] --disk-usage
-zex --select <FILE>
-zex --config <FILE>
+zex --help
 ```
-
-| Argument | Effect |
-| --- | --- |
-| `PATH` | Directory to open. If `PATH` is a file, its parent directory opens with that file selected. Relative paths resolve against the current working directory; `~` is expanded. Defaults to your home directory if omitted. |
-| `--select <FILE>` | Open `FILE`'s parent directory with `FILE` selected. Can't be combined with `PATH`. |
-| `--disk-usage` | Open straight into the disk usage view, rooted at `PATH` if given (or the whole disk otherwise). |
-| `--config <FILE>` | Load settings from `FILE` instead of the default config location. |
-
-A nonexistent `PATH` or `--select` target is a hard error (nonzero exit), not a silent fall back to the home directory.
 
 ## Configuration
 
