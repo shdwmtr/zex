@@ -319,12 +319,15 @@ impl Explorer {
             cx,
             "Undoing Delete",
             bulk_items,
-            move |explorer, _cx, errors, _cancelled| {
+            move |explorer, cx, errors, _cancelled| {
                 let succeeded = Arc::try_unwrap(succeeded).unwrap().into_inner().unwrap();
                 if !succeeded.is_empty() {
-                    explorer.redo_stack.push(UndoOp::Trash {
-                        original_paths: succeeded,
-                        items: Vec::new(),
+                    explorer.shared.update(cx, |shared, cx| {
+                        shared.redo_stack.push(UndoOp::Trash {
+                            original_paths: succeeded,
+                            items: Vec::new(),
+                        });
+                        cx.notify();
                     });
                 }
                 explorer.op_error = describe_bulk_errors(&errors);
@@ -357,14 +360,17 @@ impl Explorer {
             cx,
             "Redoing Delete",
             items,
-            move |explorer, _cx, errors, _cancelled| {
+            move |explorer, cx, errors, _cancelled| {
                 let succeeded = Arc::try_unwrap(succeeded).unwrap().into_inner().unwrap();
                 match trash_ops::capture_trashed_items(&succeeded) {
                     Ok(items) => {
                         if !items.is_empty() {
-                            explorer.undo_stack.push(UndoOp::Trash {
-                                original_paths: succeeded,
-                                items,
+                            explorer.shared.update(cx, |shared, cx| {
+                                shared.undo_stack.push(UndoOp::Trash {
+                                    original_paths: succeeded,
+                                    items,
+                                });
+                                cx.notify();
                             });
                         }
                         explorer.op_error = describe_bulk_errors(&errors);
@@ -400,14 +406,17 @@ impl Explorer {
             cx,
             "Undoing Restore",
             items,
-            move |explorer, _cx, errors, _cancelled| {
+            move |explorer, cx, errors, _cancelled| {
                 let succeeded = Arc::try_unwrap(succeeded).unwrap().into_inner().unwrap();
                 match trash_ops::capture_trashed_items(&succeeded) {
                     Ok(items) => {
                         if !items.is_empty() {
-                            explorer.redo_stack.push(UndoOp::Restore {
-                                original_paths: succeeded,
-                                items,
+                            explorer.shared.update(cx, |shared, cx| {
+                                shared.redo_stack.push(UndoOp::Restore {
+                                    original_paths: succeeded,
+                                    items,
+                                });
+                                cx.notify();
                             });
                         }
                         explorer.op_error = describe_bulk_errors(&errors);
@@ -444,12 +453,15 @@ impl Explorer {
             cx,
             "Redoing Restore",
             bulk_items,
-            move |explorer, _cx, errors, _cancelled| {
+            move |explorer, cx, errors, _cancelled| {
                 let succeeded = Arc::try_unwrap(succeeded).unwrap().into_inner().unwrap();
                 if !succeeded.is_empty() {
-                    explorer.undo_stack.push(UndoOp::Restore {
-                        original_paths: succeeded,
-                        items: Vec::new(),
+                    explorer.shared.update(cx, |shared, cx| {
+                        shared.undo_stack.push(UndoOp::Restore {
+                            original_paths: succeeded,
+                            items: Vec::new(),
+                        });
+                        cx.notify();
                     });
                 }
                 explorer.op_error = describe_bulk_errors(&errors);

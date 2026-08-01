@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use gpui::Context;
+use gpui::{App, Context};
 
 use crate::filesystem::operations::{copy, error, mv};
 use crate::filesystem::undo_op::UndoOp;
@@ -9,35 +9,38 @@ use crate::filesystem::undo_op::UndoOp;
 use super::bulk_op::{self, BulkItem};
 use super::{Explorer, describe_bulk_errors, item_label};
 
-const MAX_UNDO_HISTORY: usize = 100;
-
 impl Explorer {
     pub(super) fn push_undo(&mut self, op: UndoOp, cx: &mut Context<Self>) {
-        self.undo_stack.push(op);
-        if self.undo_stack.len() > MAX_UNDO_HISTORY {
-            self.undo_stack.remove(0);
-        }
-        self.redo_stack.clear();
-        cx.notify();
+        self.shared.update(cx, |shared, cx| {
+            shared.push_undo(op);
+            cx.notify();
+        });
     }
 
-    pub fn undo_label(&self) -> Option<&'static str> {
-        self.undo_stack.last().map(UndoOp::label)
+    pub fn undo_label(&self, cx: &App) -> Option<&'static str> {
+        self.shared.read(cx).undo_label()
     }
 
-    pub fn redo_label(&self) -> Option<&'static str> {
-        self.redo_stack.last().map(UndoOp::label)
+    pub fn redo_label(&self, cx: &App) -> Option<&'static str> {
+        self.shared.read(cx).redo_label()
     }
 
     pub fn undo(&mut self, cx: &mut Context<Self>) {
-        let Some(op) = self.undo_stack.pop() else {
+        let Some(op) = self.shared.update(cx, |shared, cx| {
+            let op = shared.undo_stack.pop();
+            cx.notify();
+            op
+        }) else {
             return;
         };
         match op {
             UndoOp::Rename { .. } | UndoOp::NewEntry { .. } => match op.undo() {
                 Ok(redo_op) => {
                     self.op_error = None;
-                    self.redo_stack.push(redo_op);
+                    self.shared.update(cx, |shared, cx| {
+                        shared.redo_stack.push(redo_op);
+                        cx.notify();
+                    });
                     self.refresh_entries();
                 }
                 Err(errors) => self.op_error = Some(error::describe(&errors)),
@@ -58,14 +61,21 @@ impl Explorer {
     }
 
     pub fn redo(&mut self, cx: &mut Context<Self>) {
-        let Some(op) = self.redo_stack.pop() else {
+        let Some(op) = self.shared.update(cx, |shared, cx| {
+            let op = shared.redo_stack.pop();
+            cx.notify();
+            op
+        }) else {
             return;
         };
         match op {
             UndoOp::Rename { .. } | UndoOp::NewEntry { .. } => match op.redo() {
                 Ok(undo_op) => {
                     self.op_error = None;
-                    self.undo_stack.push(undo_op);
+                    self.shared.update(cx, |shared, cx| {
+                        shared.undo_stack.push(undo_op);
+                        cx.notify();
+                    });
                     self.refresh_entries();
                 }
                 Err(errors) => self.op_error = Some(error::describe(&errors)),
@@ -102,10 +112,13 @@ impl Explorer {
             cx,
             "Undoing Move",
             items,
-            move |explorer, _cx, errors, _cancelled| {
+            move |explorer, cx, errors, _cancelled| {
                 let succeeded = Arc::try_unwrap(succeeded).unwrap().into_inner().unwrap();
                 if !succeeded.is_empty() {
-                    explorer.redo_stack.push(UndoOp::Move { pairs: succeeded });
+                    explorer.shared.update(cx, |shared, cx| {
+                        shared.redo_stack.push(UndoOp::Move { pairs: succeeded });
+                        cx.notify();
+                    });
                 }
                 explorer.op_error = describe_bulk_errors(&errors);
                 explorer.refresh_entries();
@@ -132,10 +145,13 @@ impl Explorer {
             cx,
             "Redoing Move",
             items,
-            move |explorer, _cx, errors, _cancelled| {
+            move |explorer, cx, errors, _cancelled| {
                 let succeeded = Arc::try_unwrap(succeeded).unwrap().into_inner().unwrap();
                 if !succeeded.is_empty() {
-                    explorer.undo_stack.push(UndoOp::Move { pairs: succeeded });
+                    explorer.shared.update(cx, |shared, cx| {
+                        shared.undo_stack.push(UndoOp::Move { pairs: succeeded });
+                        cx.notify();
+                    });
                 }
                 explorer.op_error = describe_bulk_errors(&errors);
                 explorer.refresh_entries();
@@ -175,14 +191,17 @@ impl Explorer {
             cx,
             "Undoing Copy",
             items,
-            move |explorer, _cx, errors, _cancelled| {
+            move |explorer, cx, errors, _cancelled| {
                 let succeeded = Arc::try_unwrap(succeeded).unwrap().into_inner().unwrap();
                 if !succeeded.is_empty() {
                     let (sources, created) = succeeded.into_iter().unzip();
-                    explorer.redo_stack.push(UndoOp::Copy {
-                        sources,
-                        dest_dir,
-                        created,
+                    explorer.shared.update(cx, |shared, cx| {
+                        shared.redo_stack.push(UndoOp::Copy {
+                            sources,
+                            dest_dir,
+                            created,
+                        });
+                        cx.notify();
                     });
                 }
                 explorer.op_error = describe_bulk_errors(&errors);
@@ -216,14 +235,17 @@ impl Explorer {
             cx,
             "Redoing Copy",
             items,
-            move |explorer, _cx, errors, _cancelled| {
+            move |explorer, cx, errors, _cancelled| {
                 let succeeded = Arc::try_unwrap(succeeded).unwrap().into_inner().unwrap();
                 if !succeeded.is_empty() {
                     let (sources, created) = succeeded.into_iter().unzip();
-                    explorer.undo_stack.push(UndoOp::Copy {
-                        sources,
-                        dest_dir,
-                        created,
+                    explorer.shared.update(cx, |shared, cx| {
+                        shared.undo_stack.push(UndoOp::Copy {
+                            sources,
+                            dest_dir,
+                            created,
+                        });
+                        cx.notify();
                     });
                 }
                 explorer.op_error = describe_bulk_errors(&errors);

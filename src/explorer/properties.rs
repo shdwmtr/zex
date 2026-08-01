@@ -2,12 +2,19 @@ use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
-use gpui::{Context, FocusHandle, SharedString, Task, Window};
+use gpui::{
+    AppContext as _, Bounds, Context, FocusHandle, IntoElement, Render, SharedString, Task,
+    TitlebarOptions, Window, WindowBounds, WindowOptions, px, size,
+};
 
 use crate::filesystem::entry;
 use crate::filesystem::operations::stats::DirStats;
+use crate::ui::properties_window;
 
 use super::Explorer;
+
+const WINDOW_WIDTH: f32 = 440.0;
+const WINDOW_HEIGHT: f32 = 470.0;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum PropertiesTab {
@@ -35,7 +42,7 @@ pub struct SingleItemInfo {
     pub gid: u32,
 }
 
-pub struct PropertiesState {
+pub struct PropertiesWindow {
     pub paths: Vec<PathBuf>,
     pub tab: PropertiesTab,
     pub name: SharedString,
@@ -51,11 +58,28 @@ pub struct PropertiesState {
     _task: Option<Task<()>>,
 }
 
+impl PropertiesWindow {
+    pub fn close(&mut self, window: &mut Window, _cx: &mut Context<Self>) {
+        window.remove_window();
+    }
+
+    pub fn set_tab(&mut self, tab: PropertiesTab, cx: &mut Context<Self>) {
+        self.tab = tab;
+        cx.notify();
+    }
+}
+
+impl Render for PropertiesWindow {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        properties_window::render(self, window, cx)
+    }
+}
+
 impl Explorer {
     pub fn open_properties(
         &mut self,
         paths: Vec<PathBuf>,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         let metas: Vec<(PathBuf, std::fs::Metadata)> = paths
@@ -138,32 +162,8 @@ impl Explorer {
 
         let scan_paths: Vec<PathBuf> = metas.iter().map(|(path, _)| path.clone()).collect();
 
-        let (stats, task) = if any_dir {
-            let task_paths = scan_paths.clone();
-            let task = cx.spawn(async move |weak, cx| {
-                let stats = cx
-                    .background_executor()
-                    .spawn(async move {
-                        let mut total = DirStats::default();
-                        for path in &task_paths {
-                            total.merge(crate::filesystem::operations::stats::scan_stats(path));
-                        }
-                        total
-                    })
-                    .await;
-
-                let _ = weak.update(cx, |explorer, cx| {
-                    if let Some(properties) = &mut explorer.properties {
-                        properties.stats = StatsState::Ready(SelectionStats {
-                            file_count: stats.file_count,
-                            total_size: stats.total_size,
-                            size_on_disk: stats.size_on_disk,
-                        });
-                    }
-                    cx.notify();
-                });
-            });
-            (StatsState::Loading, Some(task))
+        let (stats, has_task) = if any_dir {
+            (StatsState::Loading, true)
         } else {
             let mut total = DirStats::default();
             for (_, meta) in &metas {
@@ -177,42 +177,75 @@ impl Explorer {
                     total_size: total.total_size,
                     size_on_disk: total.size_on_disk,
                 }),
-                None,
+                false,
             )
         };
 
-        let focus_handle = cx.focus_handle();
-        window.focus(&focus_handle);
+        let bounds = Bounds::centered(None, size(px(WINDOW_WIDTH), px(WINDOW_HEIGHT)), cx);
+        let window_title: SharedString = format!("{name} Info").into();
 
-        self.properties = Some(PropertiesState {
-            paths: scan_paths,
-            tab: PropertiesTab::General,
-            name,
-            location,
-            type_label,
-            is_dir,
-            is_symlink,
-            link_target,
-            link_target_is_dir,
-            single,
-            stats,
-            focus_handle,
-            _task: task,
-        });
-        cx.notify();
-    }
+        let opened = cx.open_window(
+            WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(bounds)),
+                window_min_size: Some(size(px(WINDOW_WIDTH), px(WINDOW_HEIGHT))),
+                is_resizable: false,
+                titlebar: Some(TitlebarOptions {
+                    title: Some(window_title),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            move |window, cx| {
+                cx.new(|cx| {
+                    let focus_handle = cx.focus_handle();
+                    window.focus(&focus_handle);
 
-    pub fn close_properties(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.properties.take().is_some() {
-            window.focus(&self.focus_handle);
-            cx.notify();
-        }
-    }
+                    let task = has_task.then(|| {
+                        let task_paths = scan_paths.clone();
+                        cx.spawn(async move |weak, cx| {
+                            let stats = cx
+                                .background_executor()
+                                .spawn(async move {
+                                    let mut total = DirStats::default();
+                                    for path in &task_paths {
+                                        total.merge(
+                                            crate::filesystem::operations::stats::scan_stats(path),
+                                        );
+                                    }
+                                    total
+                                })
+                                .await;
 
-    pub fn set_properties_tab(&mut self, tab: PropertiesTab, cx: &mut Context<Self>) {
-        if let Some(properties) = &mut self.properties {
-            properties.tab = tab;
-            cx.notify();
-        }
+                            let _ = weak.update(cx, |properties: &mut PropertiesWindow, cx| {
+                                properties.stats = StatsState::Ready(SelectionStats {
+                                    file_count: stats.file_count,
+                                    total_size: stats.total_size,
+                                    size_on_disk: stats.size_on_disk,
+                                });
+                                cx.notify();
+                            });
+                        })
+                    });
+
+                    PropertiesWindow {
+                        paths: scan_paths,
+                        tab: PropertiesTab::General,
+                        name,
+                        location,
+                        type_label,
+                        is_dir,
+                        is_symlink,
+                        link_target,
+                        link_target_is_dir,
+                        single,
+                        stats,
+                        focus_handle,
+                        _task: task,
+                    }
+                })
+            },
+        );
+
+        let _ = opened;
     }
 }

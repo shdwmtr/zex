@@ -4,8 +4,7 @@ use gpui::{
     UniformListScrollHandle, Window, div, point, prelude::FluentBuilder as _, px,
 };
 
-use crate::explorer::Explorer;
-use crate::explorer::drag::ScrollbarId;
+use crate::explorer::drag::{ScrollDragHost, ScrollbarId};
 use crate::theme;
 
 const TRACK_WIDTH: Pixels = px(10.0);
@@ -13,27 +12,27 @@ const THUMB_INSET: Pixels = px(2.0);
 const THUMB_MIN_HEIGHT: Pixels = px(24.0);
 
 #[derive(IntoElement)]
-pub struct Scrollbar {
+pub struct Scrollbar<T: ScrollDragHost + 'static> {
     handle: ScrollHandle,
-    explorer: Entity<Explorer>,
+    host: Entity<T>,
     id: ScrollbarId,
 }
 
-impl Scrollbar {
-    pub fn vertical(handle: &ScrollHandle, explorer: Entity<Explorer>, id: ScrollbarId) -> Self {
+impl<T: ScrollDragHost + 'static> Scrollbar<T> {
+    pub fn vertical(handle: &ScrollHandle, host: Entity<T>, id: ScrollbarId) -> Self {
         Self {
             handle: handle.clone(),
-            explorer,
+            host,
             id,
         }
     }
 
     pub fn vertical_for_uniform_list(
         handle: &UniformListScrollHandle,
-        explorer: Entity<Explorer>,
+        host: Entity<T>,
         id: ScrollbarId,
     ) -> Self {
-        Self::vertical(&handle.0.borrow().base_handle.clone(), explorer, id)
+        Self::vertical(&handle.0.borrow().base_handle.clone(), host, id)
     }
 }
 
@@ -59,7 +58,7 @@ fn target_offset_y(
     -(max_offset_height * fraction)
 }
 
-impl RenderOnce for Scrollbar {
+impl<T: ScrollDragHost + 'static> RenderOnce for Scrollbar<T> {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let id = self.id;
         let base = self.handle;
@@ -88,11 +87,11 @@ impl RenderOnce for Scrollbar {
 
         let jump_handle = base.clone();
         let drag_handle = base.clone();
-        let mouse_down_explorer = self.explorer.clone();
-        let drag_move_explorer = self.explorer.clone();
-        let mouse_up_explorer = self.explorer.clone();
+        let mouse_down_host = self.host.clone();
+        let drag_move_host = self.host.clone();
+        let mouse_up_host = self.host.clone();
 
-        let dragging = self.explorer.read(cx).scrollbar_grab_offset(id).is_some();
+        let dragging = self.host.read(cx).scrollbar_grab_offset(id).is_some();
 
         div()
             .id("scrollbar-track")
@@ -122,8 +121,8 @@ impl RenderOnce for Scrollbar {
                         jump_handle.set_offset(point(jump_handle.offset().x, offset_y));
                         center
                     };
-                    mouse_down_explorer.update(cx, |explorer, cx| {
-                        explorer.begin_scrollbar_drag(id, grab, cx);
+                    mouse_down_host.update(cx, |host, cx| {
+                        host.begin_scrollbar_drag(id, grab, cx);
                     });
                 })
                 .on_drag(id, move |_, _, _window, cx| cx.new(|_| ScrollDragGhost))
@@ -132,8 +131,7 @@ impl RenderOnce for Scrollbar {
                         if *event.drag(cx) != id {
                             return;
                         }
-                        let Some(grab_offset) =
-                            drag_move_explorer.read(cx).scrollbar_grab_offset(id)
+                        let Some(grab_offset) = drag_move_host.read(cx).scrollbar_grab_offset(id)
                         else {
                             return;
                         };
@@ -149,8 +147,8 @@ impl RenderOnce for Scrollbar {
                     },
                 )
                 .on_mouse_up(MouseButton::Left, move |_event, _window, cx| {
-                    mouse_up_explorer.update(cx, |explorer, cx| {
-                        explorer.end_scrollbar_drag(cx);
+                    mouse_up_host.update(cx, |host, cx| {
+                        host.end_scrollbar_drag(cx);
                     });
                 })
                 .child(

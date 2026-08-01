@@ -7,6 +7,7 @@ mod keys;
 mod settings;
 mod theme;
 mod ui;
+mod workspace;
 
 use std::path::PathBuf;
 

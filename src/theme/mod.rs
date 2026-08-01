@@ -14,6 +14,8 @@ pub struct ColorTheme {
     pub bg_elevated: Rgba,
     pub bg_bar: Rgba,
     pub bg_header: Rgba,
+    pub bg_title_bar: Rgba,
+    pub bg_title_bar_inactive: Rgba,
     pub bg_hover: Rgba,
     pub bg_selected: Rgba,
     pub bg_sidebar_hover: Rgba,
@@ -45,6 +47,8 @@ impl ColorTheme {
             bg_elevated: rgb(0x2c2c2c),
             bg_bar: rgb(0x2a2a2a),
             bg_header: rgb(0x202020),
+            bg_title_bar: rgb(0x202020),
+            bg_title_bar_inactive: rgb(0x202020),
             bg_hover: rgb(0x2d2d2d),
             bg_selected: rgb(0x3a5a8a),
             bg_sidebar_hover: rgb(0x33415a),
@@ -81,7 +85,10 @@ pub fn init(theme: ColorTheme) {
 }
 
 fn active() -> ColorTheme {
-    ACTIVE_THEME.get().copied().unwrap_or_else(ColorTheme::zex_default)
+    ACTIVE_THEME
+        .get()
+        .copied()
+        .unwrap_or_else(ColorTheme::zex_default)
 }
 
 pub const UI_FONT_SCALE: f32 = 0.875;
@@ -122,6 +129,12 @@ pub fn bg_bar() -> Rgba {
 }
 pub fn bg_header() -> Rgba {
     active().bg_header
+}
+pub fn bg_title_bar() -> Rgba {
+    active().bg_title_bar
+}
+pub fn bg_title_bar_inactive() -> Rgba {
+    active().bg_title_bar_inactive
 }
 pub fn bg_hover() -> Rgba {
     active().bg_hover

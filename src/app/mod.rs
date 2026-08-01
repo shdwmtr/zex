@@ -1,14 +1,14 @@
 pub mod assets;
-mod window_root;
+pub mod window_root;
 
 use gpui::{App, AppContext, Application, Bounds, WindowBounds, WindowOptions, px, size};
 
 use crate::cli::Startup;
-use crate::explorer::Explorer;
 use crate::keys;
 use crate::settings::Settings;
 use crate::theme::{self, UiFont, color_theme, icon_theme};
 use crate::ui;
+use crate::workspace::Workspace;
 
 use window_root::WindowRoot;
 
@@ -54,8 +54,9 @@ pub fn run(settings: Settings, startup: Startup) {
                     ..Default::default()
                 },
                 |window, cx| {
-                    let explorer = cx.new(|cx| {
-                        Explorer::new(
+                    let shared = cx.new(|_| crate::explorer::shared_state::SharedState::new());
+                    let workspace = cx.new(|cx| {
+                        Workspace::new(
                             window,
                             cx,
                             show_hidden_files,
@@ -63,10 +64,11 @@ pub fn run(settings: Settings, startup: Startup) {
                             sidebar_entries,
                             git_settings,
                             disk_usage_settings,
+                            shared,
                             startup,
                         )
                     });
-                    cx.new(|_| WindowRoot { content: explorer })
+                    cx.new(|_| WindowRoot { content: workspace })
                 },
             )
             .unwrap();

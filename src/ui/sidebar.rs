@@ -10,7 +10,10 @@ use crate::explorer::drag::ScrollbarId;
 use crate::settings::SidebarItem;
 use crate::theme;
 use crate::theme::icon_theme;
+use crate::ui::context_menu;
+use crate::ui::popup_menu::ContextMenuExt;
 use crate::ui::scrollbar::Scrollbar;
+use crate::workspace::Workspace;
 
 const RESIZE_HIT_WIDTH: f32 = 17.0;
 
@@ -23,12 +26,12 @@ impl Render for SidebarResizeGhost {
 }
 
 pub fn resize_handle(
-    explorer: Entity<Explorer>,
+    workspace: Entity<Workspace>,
     sidebar_width: f32,
     active: bool,
-    cx: &Context<Explorer>,
+    cx: &Context<Workspace>,
 ) -> impl IntoElement {
-    let drag_explorer = explorer.clone();
+    let drag_workspace = workspace.clone();
 
     div()
         .id("sidebar-resize-handle")
@@ -49,20 +52,20 @@ pub fn resize_handle(
         )
         .on_drag((), move |_, _point, window, cx| {
             let anchor_x = f32::from(window.mouse_position().x);
-            drag_explorer.update(cx, |explorer, cx| {
-                explorer.begin_sidebar_resize(anchor_x, cx);
+            drag_workspace.update(cx, |workspace, cx| {
+                workspace.begin_sidebar_resize(anchor_x, cx);
             });
             cx.new(|_| SidebarResizeGhost)
         })
         .on_drag_move::<()>(
-            cx.listener(move |explorer, event: &DragMoveEvent<()>, _window, cx| {
-                explorer.update_sidebar_resize(f32::from(event.event.position.x), cx);
+            cx.listener(move |workspace, event: &DragMoveEvent<()>, _window, cx| {
+                workspace.update_sidebar_resize(f32::from(event.event.position.x), cx);
             }),
         )
         .on_mouse_up(
             MouseButton::Left,
-            cx.listener(|explorer, _event: &MouseUpEvent, _window, cx| {
-                explorer.end_sidebar_resize(cx);
+            cx.listener(|workspace, _event: &MouseUpEvent, _window, cx| {
+                workspace.end_sidebar_resize(cx);
             }),
         )
 }
@@ -101,14 +104,19 @@ fn rows(sidebar_entries: &[SidebarItem]) -> Vec<Row> {
     rows
 }
 
-pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoElement {
+pub fn render(
+    workspace: &Workspace,
+    active: Entity<Explorer>,
+    cx: &Context<Workspace>,
+) -> impl IntoElement {
     let entity = cx.entity();
-    let scroll_handle = explorer.sidebar_scroll_handle.clone();
+    let scroll_handle = workspace.sidebar_scroll_handle.clone();
+    let current_dir = active.read(cx).current_dir().to_path_buf();
 
     div()
         .id("sidebar")
         .relative()
-        .w(px(explorer.sidebar_width))
+        .w(px(workspace.sidebar_width))
         .flex_shrink_0()
         .h_full()
         .flex()
@@ -135,7 +143,7 @@ pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoElement {
                         .overflow_y_scroll()
                         .track_scroll(&scroll_handle)
                         .children(
-                            rows(&explorer.sidebar_entries)
+                            rows(&workspace.sidebar_entries)
                                 .into_iter()
                                 .enumerate()
                                 .map(|(ix, row)| match row {
@@ -150,9 +158,13 @@ pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoElement {
                                         .child(title)
                                         .into_any_element(),
                                     Row::Place(place) => {
-                                        let is_active = place.path == explorer.current_dir();
+                                        let is_active = place.path == current_dir;
                                         let path = place.path.clone();
                                         let drop_path = place.path.clone();
+                                        let click_explorer = active.clone();
+                                        let drop_explorer = active.clone();
+                                        let menu_explorer = active.clone();
+                                        let menu_path = place.path.clone();
 
                                         div()
                                             .id(ix)
@@ -162,28 +174,49 @@ pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoElement {
                                             .items_center()
                                             .gap_2()
                                             .px_3()
-                                            .py_1()
+                                            .py_0p5()
                                             .cursor_pointer()
                                             .when(is_active, |this| this.bg(theme::bg_sidebar_selected()))
                                             .hover(|style| style.bg(theme::bg_sidebar_hover()))
-                                            .on_click(cx.listener(move |explorer, _event, _window, cx| {
-                                                explorer.navigate_to(path.clone(), cx);
-                                            }))
+                                            .on_click(move |_event, _window, cx| {
+                                                click_explorer.update(cx, |explorer, cx| {
+                                                    explorer.navigate_to(path.clone(), cx);
+                                                });
+                                            })
                                             .drag_over::<gpui::ExternalPaths>(|style, _paths, _window, _cx| {
                                                 style
                                                     .bg(theme::drop_target_fill())
                                                     .border_1()
                                                     .border_color(theme::drop_target_border())
                                             })
-                                            .on_drop::<gpui::ExternalPaths>(cx.listener(
-                                                move |explorer, paths: &gpui::ExternalPaths, _window, cx| {
-                                                    explorer.move_paths_into(
-                                                        paths.paths().to_vec(),
-                                                        drop_path.clone(),
-                                                        cx,
-                                                    );
+                                            .on_drop::<gpui::ExternalPaths>(
+                                                move |paths: &gpui::ExternalPaths, _window, cx| {
+                                                    let paths = paths.paths().to_vec();
+                                                    drop_explorer.update(cx, |explorer, cx| {
+                                                        explorer.move_paths_into(
+                                                            paths,
+                                                            drop_path.clone(),
+                                                            cx,
+                                                        );
+                                                    });
                                                 },
-                                            ))
+                                            )
+                                            .context_menu(move |menu, window, cx| {
+                                                let target = menu_path.clone();
+                                                menu_explorer.update(cx, |explorer, cx| {
+                                                    explorer.selected =
+                                                        std::iter::once(target.clone()).collect();
+                                                    explorer.focused_path = Some(target);
+                                                    cx.notify();
+                                                });
+                                                context_menu::file_row_menu(
+                                                    menu_explorer.clone(),
+                                                    menu_path.clone(),
+                                                    menu,
+                                                    window,
+                                                    cx,
+                                                )
+                                            })
                                             .child(icon_theme::directory_svg_icon(cx))
                                             .child(place.label)
                                             .into_any_element()

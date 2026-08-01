@@ -182,15 +182,6 @@ impl Explorer {
         cx.notify();
     }
 
-    pub fn sidebar_should_render(&self) -> bool {
-        self.sidebar_visible && !self.sidebar_entries.is_empty()
-    }
-
-    pub fn toggle_sidebar(&mut self, cx: &mut Context<Self>) {
-        self.sidebar_visible = !self.sidebar_visible;
-        cx.notify();
-    }
-
     pub fn navigate_to(&mut self, path: PathBuf, cx: &mut Context<Self>) {
         if self.history.navigate(path) {
             self.enter_directory(cx);

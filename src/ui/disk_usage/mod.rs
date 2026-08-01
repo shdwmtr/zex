@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use gpui::{
     AnyElement, Context, FontWeight, InteractiveElement, IntoElement, ParentElement,
-    StatefulInteractiveElement, Styled, div, px,
+    StatefulInteractiveElement, Styled, Window, div, px,
 };
 
 use crate::explorer::Explorer;
@@ -19,7 +19,11 @@ use crate::theme;
 use crate::ui::path_bar;
 use crate::ui::warning_dialog;
 
-pub fn render_panel(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoElement {
+pub fn render_panel(
+    explorer: &Explorer,
+    window: &Window,
+    cx: &Context<Explorer>,
+) -> impl IntoElement {
     let state = explorer.disk_usage.as_ref().unwrap();
 
     let content: AnyElement = match &state.scan {
@@ -42,7 +46,7 @@ pub fn render_panel(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoEle
         .flex_col()
         .bg(theme::bg_root())
         .text_color(theme::text_primary())
-        .child(path_bar::render(explorer, cx))
+        .child(path_bar::render(explorer, false, window, cx))
         .children(explorer.op_error.as_ref().map(|message| {
             div()
                 .w_full()

@@ -181,7 +181,7 @@ fn render_dir(explorer: &Explorer, cx: &Context<Explorer>) -> AnyElement {
             .items_center()
             .gap_2()
             .px_3()
-            .py_1()
+            .py_0p5()
             .child(icon)
             .child(
                 div()
@@ -338,6 +338,8 @@ fn render_dir(explorer: &Explorer, cx: &Context<Explorer>) -> AnyElement {
                                         let entry = explorer.entries[ix].clone();
                                         let is_selected = explorer.selected.contains(&entry.path);
                                         let is_cut = explorer
+                                            .shared
+                                            .read(cx)
                                             .clipboard
                                             .as_ref()
                                             .map(|clip| clip.op == ClipboardOp::Cut && clip.paths.contains(&entry.path))
@@ -421,7 +423,7 @@ fn render_dir(explorer: &Explorer, cx: &Context<Explorer>) -> AnyElement {
                                                 .items_center()
                                                 .w_full()
                                                 .px_3()
-                                                .py_1()
+                                                .py_0p5()
                                                 .when(is_cut, |this| this.opacity(0.5))
                                                 .when(!is_cut && is_dimmed_ignored, |this| this.opacity(0.55))
                                                 .when(is_selected, |this| this.bg(theme::bg_selected()))
@@ -720,7 +722,7 @@ fn render_trash(explorer: &Explorer, cx: &Context<Explorer>) -> AnyElement {
                                                 .items_center()
                                                 .w_full()
                                                 .px_3()
-                                                .py_1()
+                                                .py_0p5()
                                                 .when(is_selected, |this| this.bg(theme::bg_selected()))
                                                 .on_mouse_down(
                                                     MouseButton::Left,

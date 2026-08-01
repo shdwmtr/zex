@@ -1,6 +1,6 @@
 use gpui::{
-    BoxShadow, Context, FontWeight, Hsla, InteractiveElement, IntoElement, MouseButton,
-    ParentElement, Point, StatefulInteractiveElement, Styled, div, px,
+    Context, FontWeight, Hsla, InteractiveElement, IntoElement, MouseButton, ParentElement,
+    StatefulInteractiveElement, Styled, div, px,
 };
 
 use crate::explorer::Explorer;
@@ -41,17 +41,7 @@ pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> Option<impl IntoEl
                     .bg(theme::bg_elevated())
                     .border_1()
                     .border_color(theme::border())
-                    .shadow(vec![BoxShadow {
-                        color: Hsla {
-                            h: 0.,
-                            s: 0.,
-                            l: 0.,
-                            a: 0.4,
-                        },
-                        blur_radius: px(16.0),
-                        spread_radius: px(0.),
-                        offset: Point::new(px(0.0), px(4.0)),
-                    }])
+                    .shadow_lg()
                     .child(
                         div()
                             .font_weight(FontWeight::BOLD)

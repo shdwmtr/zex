@@ -23,18 +23,17 @@ pub fn init(cx: &mut App) {
 }
 
 #[derive(Clone, Copy)]
-enum NavDirection {
+pub enum NavDirection {
     Back,
     Forward,
 }
 
-fn nav_button(
+pub fn nav_button(
     id: &'static str,
     icon_asset: &str,
     enabled: bool,
     direction: NavDirection,
     explorer_entity: &Entity<Explorer>,
-    cx: &Context<Explorer>,
 ) -> AnyElement {
     let color = if enabled {
         theme::text_primary()
@@ -67,15 +66,16 @@ fn nav_button(
     };
 
     if enabled {
+        let click_entity = explorer_entity.clone();
         button
             .cursor_pointer()
             .hover(|style| style.bg(theme::bg_breadcrumb_hover()))
-            .on_click(
-                cx.listener(move |explorer, _event, _window, cx| match direction {
+            .on_click(move |_event, _window, cx| {
+                click_entity.update(cx, |explorer, cx| match direction {
                     NavDirection::Back => explorer.go_back(cx),
                     NavDirection::Forward => explorer.go_forward(cx),
-                }),
-            )
+                });
+            })
             .context_menu(history_menu)
             .into_any_element()
     } else {
@@ -264,8 +264,16 @@ fn suggestions_popup(
     deferred(panel).with_priority(1).into_any_element()
 }
 
-pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoElement {
+pub fn render(explorer: &Explorer, show_nav: bool, window: &Window, cx: &Context<Explorer>) -> impl IntoElement {
     let entity = cx.entity();
+    let bg = if !show_nav {
+        // The tab row is the titlebar in this state, so the path bar underneath it is static.
+        theme::bg_header()
+    } else if window.is_window_active() {
+        theme::bg_title_bar()
+    } else {
+        theme::bg_title_bar_inactive()
+    };
     let is_disk_usage = explorer.disk_usage.is_some();
     let can_go_up = explorer
         .disk_usage
@@ -316,24 +324,24 @@ pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoElement {
         .items_center()
         .gap_1()
         .px_3()
-        .py_2()
-        .bg(theme::bg_bar())
-        .when(!is_disk_usage, |el| {
+        .py(px(6.0))
+        .bg(bg)
+        .border_b_1()
+        .border_color(theme::border())
+        .when(!is_disk_usage && show_nav, |el| {
             el.child(nav_button(
                 "go-back",
-                "icons/chevron-left.svg",
+                "icons/arrow-left.svg",
                 explorer.can_go_back(),
                 NavDirection::Back,
                 &entity,
-                cx,
             ))
             .child(nav_button(
                 "go-forward",
-                "icons/chevron-right.svg",
+                "icons/arrow-right.svg",
                 explorer.can_go_forward(),
                 NavDirection::Forward,
                 &entity,
-                cx,
             ))
         })
         .when(is_disk_usage, |el| {

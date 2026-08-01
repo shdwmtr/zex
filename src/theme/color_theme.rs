@@ -33,6 +33,10 @@ struct ThemeStyleContent {
     status_bar_background: Option<Rgba>,
     #[serde(default, rename = "toolbar.background")]
     toolbar_background: Option<Rgba>,
+    #[serde(default, rename = "title_bar.background")]
+    title_bar_background: Option<Rgba>,
+    #[serde(default, rename = "title_bar.inactive_background")]
+    title_bar_inactive_background: Option<Rgba>,
     #[serde(default, rename = "element.hover")]
     element_hover: Option<Rgba>,
     #[serde(default, rename = "element.selected")]
@@ -184,6 +188,13 @@ fn load_bundled_default() -> ColorTheme {
         .expect("zex's bundled color theme manifest must define at least one theme")
         .1;
 
+    let bg_header = style
+        .toolbar_background
+        .expect("bundled theme must set toolbar.background");
+    let bg_title_bar = style
+        .title_bar_background
+        .expect("bundled theme must set title_bar.background");
+
     ColorTheme {
         bg_root: style
             .editor_background
@@ -199,9 +210,11 @@ fn load_bundled_default() -> ColorTheme {
         bg_bar: style
             .status_bar_background
             .expect("bundled theme must set status_bar.background"),
-        bg_header: style
-            .toolbar_background
-            .expect("bundled theme must set toolbar.background"),
+        bg_header,
+        bg_title_bar,
+        bg_title_bar_inactive: style
+            .title_bar_inactive_background
+            .unwrap_or(bg_title_bar),
         bg_hover: style
             .element_hover
             .expect("bundled theme must set element.hover"),
@@ -247,6 +260,11 @@ fn load_bundled_default() -> ColorTheme {
 }
 
 fn merge(style: &ThemeStyleContent, fallback: &ColorTheme) -> ColorTheme {
+    let bg_header = style.toolbar_background.unwrap_or(fallback.bg_header);
+    let bg_title_bar = style
+        .title_bar_background
+        .unwrap_or(fallback.bg_title_bar);
+
     ColorTheme {
         bg_root: style
             .editor_background
@@ -256,9 +274,15 @@ fn merge(style: &ThemeStyleContent, fallback: &ColorTheme) -> ColorTheme {
         bg_panel: style.panel_background.unwrap_or(fallback.bg_panel),
         bg_elevated: style
             .elevated_surface_background
+            .or(style.editor_background)
+            .or(style.background)
             .unwrap_or(fallback.bg_elevated),
         bg_bar: style.status_bar_background.unwrap_or(fallback.bg_bar),
-        bg_header: style.toolbar_background.unwrap_or(fallback.bg_header),
+        bg_header,
+        bg_title_bar,
+        bg_title_bar_inactive: style
+            .title_bar_inactive_background
+            .unwrap_or(bg_title_bar),
         bg_hover: style.element_hover.unwrap_or(fallback.bg_hover),
         bg_selected: style.element_selected.unwrap_or(fallback.bg_selected),
         bg_sidebar_hover: style.element_hover.unwrap_or(fallback.bg_sidebar_hover),
@@ -558,7 +582,7 @@ mod tests {
     }
 
     #[test]
-    fn bg_elevated_falls_back_to_bundled_default_when_theme_omits_it() {
+    fn bg_elevated_prefers_editor_background_when_theme_omits_it() {
         let fallback = load_bundled_default();
         let json = r##"{
             "themes": [{
@@ -566,7 +590,8 @@ mod tests {
                 "appearance": "dark",
                 "style": {
                     "background": "#141414",
-                    "panel.background": "#00000000"
+                    "panel.background": "#00000000",
+                    "editor.background": "#1a1a1a"
                 }
             }]
         }"##;
@@ -574,8 +599,24 @@ mod tests {
 
         let merged = merge(style, &fallback);
 
+        assert_eq!(merged.bg_elevated, Rgba::try_from("#1a1a1a").unwrap());
+    }
+
+    #[test]
+    fn bg_elevated_falls_back_to_bundled_default_when_theme_sets_nothing() {
+        let fallback = load_bundled_default();
+        let json = r##"{
+            "themes": [{
+                "name": "Bare",
+                "appearance": "dark",
+                "style": {}
+            }]
+        }"##;
+        let style = &parse_manifest(json)[0].1;
+
+        let merged = merge(style, &fallback);
+
         assert_eq!(merged.bg_elevated, fallback.bg_elevated);
-        assert_ne!(merged.bg_elevated, merged.bg_panel);
     }
 
     #[test]

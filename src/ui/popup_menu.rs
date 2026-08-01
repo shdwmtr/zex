@@ -22,6 +22,7 @@ pub enum PopupMenuItem {
     Item {
         label: SharedString,
         icon: Option<SharedString>,
+        shortcut: Option<SharedString>,
         checked: Option<bool>,
         disabled: bool,
         on_click: Option<ClickHandler>,
@@ -34,6 +35,7 @@ impl PopupMenuItem {
         PopupMenuItem::Item {
             label: label.into(),
             icon: None,
+            shortcut: None,
             checked: None,
             disabled: false,
             on_click: None,
@@ -45,6 +47,20 @@ impl PopupMenuItem {
             *icon = Some(path.into());
         }
         self
+    }
+
+    pub fn shortcut(mut self, shortcut: impl Into<SharedString>) -> Self {
+        if let PopupMenuItem::Item { shortcut: slot, .. } = &mut self {
+            *slot = Some(shortcut.into());
+        }
+        self
+    }
+
+    pub fn shortcut_opt(self, shortcut: Option<SharedString>) -> Self {
+        match shortcut {
+            Some(shortcut) => self.shortcut(shortcut),
+            None => self,
+        }
     }
 
     pub fn checked(mut self, checked: bool) -> Self {
@@ -104,13 +120,14 @@ fn render_item(item: &PopupMenuItem, ix: usize, cx: &mut Context<PopupMenu>) -> 
     match item {
         PopupMenuItem::Separator => div()
             .h(px(1.0))
+            .mx_1()
             .my_1()
-            .mx_2()
             .bg(theme::border())
             .into_any_element(),
         PopupMenuItem::Item {
             label,
             icon,
+            shortcut,
             checked,
             disabled,
             on_click,
@@ -124,8 +141,10 @@ fn render_item(item: &PopupMenuItem, ix: usize, cx: &mut Context<PopupMenu>) -> 
                 .flex_row()
                 .items_center()
                 .gap_2()
+                .mx_1()
                 .px_3()
                 .py_1()
+                .rounded_md()
                 .min_w(px(160.0))
                 .when(disabled, |el| el.opacity(0.4))
                 .when(!disabled, |el| {
@@ -138,22 +157,32 @@ fn render_item(item: &PopupMenuItem, ix: usize, cx: &mut Context<PopupMenu>) -> 
                             cx.emit(DismissEvent);
                         }))
                 })
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .w_4()
-                        .h_4()
-                        .children(icon.clone().map(|path| {
-                            svg()
-                                .path(path)
-                                .size_4()
-                                .flex_none()
-                                .text_color(theme::text_muted())
-                        })),
-                )
+                .when_some(icon.clone(), |el, path| {
+                    el.child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .w_4()
+                            .h_4()
+                            .child(
+                                svg()
+                                    .path(path)
+                                    .size_4()
+                                    .flex_none()
+                                    .text_color(theme::text_muted()),
+                            ),
+                    )
+                })
                 .child(div().flex_1().child(label.clone()))
+                .when_some(shortcut.clone(), |el, shortcut| {
+                    el.child(
+                        div()
+                            .pl_4()
+                            .text_color(theme::text_faint())
+                            .child(shortcut),
+                    )
+                })
                 .when_some(*checked, |el, checked| {
                     el.child(
                         div()
@@ -182,20 +211,12 @@ impl Render for PopupMenu {
             .flex()
             .flex_col()
             .py_1()
+            .rounded_lg()
+            .overflow_hidden()
             .bg(theme::bg_elevated())
             .border_1()
             .border_color(theme::border())
-            .shadow(vec![gpui::BoxShadow {
-                color: gpui::Hsla {
-                    h: 0.,
-                    s: 0.,
-                    l: 0.,
-                    a: 0.3,
-                },
-                blur_radius: px(8.0),
-                spread_radius: px(0.),
-                offset: Point::new(px(0.0), px(2.0)),
-            }])
+            .shadow_md()
             .children(
                 self.items
                     .iter()

@@ -1,11 +1,11 @@
 use gpui::{Context, Entity, IntoElement, ParentElement, Render, Styled, Window, div};
 
-use crate::explorer::Explorer;
 use crate::theme::{UI_FONT_SCALE, UiFont};
 use crate::ui;
+use crate::workspace::Workspace;
 
 pub struct WindowRoot {
-    pub content: Entity<Explorer>,
+    pub content: Entity<Workspace>,
 }
 
 impl Render for WindowRoot {

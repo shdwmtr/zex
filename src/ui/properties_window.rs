@@ -1,14 +1,15 @@
 use gpui::{
-    AnyElement, BoxShadow, Context, FontWeight, Hsla, InteractiveElement, IntoElement, MouseButton,
-    ParentElement, Point, SharedString, StatefulInteractiveElement, Styled, div,
-    prelude::FluentBuilder as _, px,
+    AnyElement, Context, FontWeight, InteractiveElement, IntoElement, ParentElement,
+    SharedString, StatefulInteractiveElement, Styled, Window, div, prelude::FluentBuilder as _,
+    px,
 };
 
-use crate::explorer::Explorer;
-use crate::explorer::properties::{PropertiesTab, StatsState};
+use crate::explorer::properties::{PropertiesTab, PropertiesWindow, StatsState};
 use crate::filesystem::entry::{self, FsEntry, format_modified, format_size};
+use crate::keys;
 use crate::theme;
 use crate::theme::icon_theme;
+use crate::theme::{UI_FONT_SCALE, UiFont};
 
 fn row(label: &'static str, value: SharedString) -> impl IntoElement {
     div()
@@ -31,8 +32,14 @@ fn row(label: &'static str, value: SharedString) -> impl IntoElement {
         )
 }
 
-pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> Option<impl IntoElement> {
-    let props = explorer.properties.as_ref()?;
+pub fn render(
+    props: &PropertiesWindow,
+    window: &mut Window,
+    cx: &Context<PropertiesWindow>,
+) -> impl IntoElement {
+    let font = cx.global::<UiFont>();
+    window.set_rem_size(font.font_size * UI_FONT_SCALE);
+    let font_family = font.font_family.clone();
 
     let icon: AnyElement = if let [path] = props.paths.as_slice() {
         let is_dir = if props.is_symlink {
@@ -146,143 +153,114 @@ pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> Option<impl IntoEl
             .into_any_element(),
     };
 
-    Some(
-        div()
-            .id("properties-backdrop")
-            .occlude()
-            .absolute()
-            .inset_0()
-            .flex()
-            .items_center()
-            .justify_center()
-            .bg(Hsla {
-                h: 0.,
-                s: 0.,
-                l: 0.,
-                a: 0.5,
-            })
-            .child(
-                div()
-                    .id("properties-panel")
-                    .track_focus(&props.focus_handle)
-                    .on_mouse_down_out(cx.listener(|explorer, _, window, cx| {
-                        explorer.close_properties(window, cx);
-                    }))
-                    .on_mouse_down(MouseButton::Left, |_, _window, cx| cx.stop_propagation())
-                    .flex()
-                    .flex_col()
-                    .w(px(420.0))
-                    .bg(theme::bg_elevated())
-                    .border_1()
-                    .border_color(theme::border())
-                    .shadow(vec![BoxShadow {
-                        color: Hsla {
-                            h: 0.,
-                            s: 0.,
-                            l: 0.,
-                            a: 0.4,
-                        },
-                        blur_radius: px(16.0),
-                        spread_radius: px(0.),
-                        offset: Point::new(px(0.0), px(4.0)),
-                    }])
-                    .child(
-                        div()
-                            .flex()
-                            .flex_row()
-                            .items_center()
-                            .gap_3()
-                            .p_4()
-                            .child(icon)
-                            .child(
-                                div()
-                                    .font_weight(FontWeight::BOLD)
-                                    .text_color(theme::text_primary())
-                                    .child(props.name.clone()),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .flex_row()
-                            .border_b_1()
-                            .border_color(theme::border())
-                            .px_4()
-                            .child(
-                                div()
-                                    .id("properties-tab-general")
-                                    .cursor_pointer()
-                                    .px_3()
-                                    .py_2()
-                                    .text_color(if general_tab {
-                                        theme::text_primary()
-                                    } else {
-                                        theme::text_muted()
-                                    })
-                                    .when(general_tab, |el| {
-                                        el.border_b_2().border_color(theme::box_select_border())
-                                    })
-                                    .on_click(cx.listener(|explorer, _, _window, cx| {
-                                        explorer.set_properties_tab(PropertiesTab::General, cx);
-                                    }))
-                                    .child("General"),
-                            )
-                            .child(
-                                div()
-                                    .id("properties-tab-permissions")
-                                    .cursor_pointer()
-                                    .px_3()
-                                    .py_2()
-                                    .text_color(if !general_tab {
-                                        theme::text_primary()
-                                    } else {
-                                        theme::text_muted()
-                                    })
-                                    .when(!general_tab, |el| {
-                                        el.border_b_2().border_color(theme::box_select_border())
-                                    })
-                                    .on_click(cx.listener(|explorer, _, _window, cx| {
-                                        explorer.set_properties_tab(PropertiesTab::Permissions, cx);
-                                    }))
-                                    .child("Permissions"),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap_3()
-                            .p_4()
-                            .h(px(260.0))
-                            .overflow_hidden()
-                            .when(general_tab, |el| el.child(general_content))
-                            .when(!general_tab, |el| el.child(permissions_content)),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .flex_row()
-                            .justify_end()
-                            .gap_2()
-                            .p_3()
-                            .border_t_1()
-                            .border_color(theme::border())
-                            .child(
-                                div()
-                                    .id("properties-close")
-                                    .cursor_pointer()
-                                    .px_3()
-                                    .py_1()
-                                    .border_1()
-                                    .border_color(theme::border())
-                                    .text_color(theme::text_primary())
-                                    .hover(|style| style.bg(theme::bg_hover()))
-                                    .on_click(cx.listener(|explorer, _, window, cx| {
-                                        explorer.close_properties(window, cx);
-                                    }))
-                                    .child("Close"),
-                            ),
-                    ),
-            ),
-    )
+    div()
+        .id("properties-window")
+        .key_context("Properties")
+        .track_focus(&props.focus_handle)
+        .on_action(cx.listener(|props, _: &keys::CloseProperties, window, cx| {
+            props.close(window, cx);
+        }))
+        .size_full()
+        .flex()
+        .flex_col()
+        .font_family(font_family)
+        .bg(theme::bg_elevated())
+        .text_color(theme::text_primary())
+        .child(
+            div()
+                .flex()
+                .flex_row()
+                .items_center()
+                .gap_3()
+                .p_4()
+                .child(icon)
+                .child(
+                    div()
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(theme::text_primary())
+                        .child(props.name.clone()),
+                ),
+        )
+        .child(
+            div()
+                .flex()
+                .flex_row()
+                .border_b_1()
+                .border_color(theme::border())
+                .px_4()
+                .child(
+                    div()
+                        .id("properties-tab-general")
+                        .cursor_pointer()
+                        .px_3()
+                        .py_2()
+                        .text_color(if general_tab {
+                            theme::text_primary()
+                        } else {
+                            theme::text_muted()
+                        })
+                        .when(general_tab, |el| {
+                            el.border_b_2().border_color(theme::box_select_border())
+                        })
+                        .on_click(cx.listener(|props, _, _window, cx| {
+                            props.set_tab(PropertiesTab::General, cx);
+                        }))
+                        .child("General"),
+                )
+                .child(
+                    div()
+                        .id("properties-tab-permissions")
+                        .cursor_pointer()
+                        .px_3()
+                        .py_2()
+                        .text_color(if !general_tab {
+                            theme::text_primary()
+                        } else {
+                            theme::text_muted()
+                        })
+                        .when(!general_tab, |el| {
+                            el.border_b_2().border_color(theme::box_select_border())
+                        })
+                        .on_click(cx.listener(|props, _, _window, cx| {
+                            props.set_tab(PropertiesTab::Permissions, cx);
+                        }))
+                        .child("Permissions"),
+                ),
+        )
+        .child(
+            div()
+                .flex()
+                .flex_col()
+                .gap_3()
+                .p_4()
+                .flex_1()
+                .overflow_hidden()
+                .when(general_tab, |el| el.child(general_content))
+                .when(!general_tab, |el| el.child(permissions_content)),
+        )
+        .child(
+            div()
+                .flex()
+                .flex_row()
+                .justify_end()
+                .gap_2()
+                .p_3()
+                .border_t_1()
+                .border_color(theme::border())
+                .child(
+                    div()
+                        .id("properties-close")
+                        .cursor_pointer()
+                        .px_3()
+                        .py_1()
+                        .border_1()
+                        .border_color(theme::border())
+                        .text_color(theme::text_primary())
+                        .hover(|style| style.bg(theme::bg_hover()))
+                        .on_click(cx.listener(|props, _, window, cx| {
+                            props.close(window, cx);
+                        }))
+                        .child("Close"),
+                ),
+        )
 }

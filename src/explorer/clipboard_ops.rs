@@ -49,11 +49,13 @@ impl Explorer {
             paths: paths.clone(),
             op: ClipboardPathsOp::Copy,
         }));
-        self.clipboard = Some(FileClipboard {
-            op: ClipboardOp::Copy,
-            paths,
+        self.shared.update(cx, |shared, cx| {
+            shared.clipboard = Some(FileClipboard {
+                op: ClipboardOp::Copy,
+                paths,
+            });
+            cx.notify();
         });
-        cx.notify();
     }
 
     pub fn cut_selection(&mut self, cx: &mut Context<Self>) {
@@ -65,11 +67,13 @@ impl Explorer {
             paths: paths.clone(),
             op: ClipboardPathsOp::Cut,
         }));
-        self.clipboard = Some(FileClipboard {
-            op: ClipboardOp::Cut,
-            paths,
+        self.shared.update(cx, |shared, cx| {
+            shared.clipboard = Some(FileClipboard {
+                op: ClipboardOp::Cut,
+                paths,
+            });
+            cx.notify();
         });
-        cx.notify();
     }
 
     pub fn copy_paths_to_clipboard(&self, paths: &[PathBuf], cx: &Context<Self>) {
@@ -92,10 +96,13 @@ impl Explorer {
                 op: op.into(),
                 paths,
             });
-        let Some(clipboard) = os_clipboard.or_else(|| self.clipboard.take()) else {
+        let Some(clipboard) = os_clipboard.or_else(|| {
+            self.shared
+                .update(cx, |shared, _cx| shared.clipboard.take())
+        }) else {
             return;
         };
-        self.clipboard = None;
+        self.shared.update(cx, |shared, _cx| shared.clipboard = None);
         let dest_dir = self.current_dir().to_path_buf();
 
         match clipboard.op {

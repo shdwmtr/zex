@@ -14,7 +14,7 @@ use crate::ui::disk_usage::geometry::{self, WedgeGeometry, WedgeTarget};
 
 use super::Explorer;
 use super::columns::{self, SortDirection};
-use super::drag::SidebarResizeDrag;
+use super::drag::WidthResizeDrag;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum DiskUsageSortColumn {
@@ -93,7 +93,7 @@ pub struct DiskUsageState {
     pub hovering_center: bool,
     pub hover_local_pos: Option<Point<Pixels>>,
     pub list_width: f32,
-    pub list_resize_drag: Option<SidebarResizeDrag>,
+    pub list_resize_drag: Option<WidthResizeDrag>,
     pub column_widths: DiskUsageColumnWidths,
     pub column_resize_drag: Option<DiskUsageColumnResizeDrag>,
     pub tree_scroll_handle: UniformListScrollHandle,
@@ -359,7 +359,7 @@ impl Explorer {
 
     pub fn begin_disk_usage_list_resize(&mut self, anchor_x: f32, cx: &mut Context<Self>) {
         let Some(state) = &mut self.disk_usage else { return };
-        state.list_resize_drag = Some(SidebarResizeDrag { anchor_x, start_width: state.list_width });
+        state.list_resize_drag = Some(WidthResizeDrag { anchor_x, start_width: state.list_width });
         cx.notify();
     }
 
