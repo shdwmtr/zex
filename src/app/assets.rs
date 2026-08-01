@@ -5,6 +5,9 @@ use rust_embed::RustEmbed;
 
 #[derive(RustEmbed)]
 #[folder = "assets"]
+#[include = "icons/*"]
+#[include = "icon_themes/*"]
+#[include = "themes/**/*"]
 struct EmbeddedAssets;
 
 pub struct Assets;
@@ -46,5 +49,23 @@ impl AssetSource for Assets {
 
     fn list(&self, path: &str) -> Result<Vec<SharedString>> {
         Ok(Self::list_dir(path))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn root_level_icon_png_is_not_embedded() {
+        assert!(EmbeddedAssets::get("icon.png").is_none());
+    }
+
+    #[test]
+    fn known_content_dirs_are_still_embedded() {
+        assert!(EmbeddedAssets::get("icons/folder.svg").is_some());
+        assert!(EmbeddedAssets::get("icon_themes/zex-default.json").is_some());
+        assert!(EmbeddedAssets::get("themes/zex-default.json").is_some());
+        assert!(EmbeddedAssets::get("themes/zed_builtin/ayu.json").is_some());
     }
 }
