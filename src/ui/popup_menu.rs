@@ -11,6 +11,13 @@ use crate::theme;
 
 actions!(zex_popup_menu, [Dismiss]);
 
+fn snap_to_device_pixel(point: Point<Pixels>, scale_factor: f32) -> Point<Pixels> {
+    Point {
+        x: px((f32::from(point.x) * scale_factor).round() / scale_factor),
+        y: px((f32::from(point.y) * scale_factor).round() / scale_factor),
+    }
+}
+
 pub fn init(cx: &mut App) {
     cx.bind_keys([KeyBinding::new("escape", Dismiss, Some("PopupMenu"))]);
 }
@@ -116,11 +123,17 @@ impl PopupMenu {
 
 impl EventEmitter<DismissEvent> for PopupMenu {}
 
-fn render_item(item: &PopupMenuItem, ix: usize, cx: &mut Context<PopupMenu>) -> AnyElement {
+fn render_item(
+    item: &PopupMenuItem,
+    ix: usize,
+    window: &Window,
+    cx: &mut Context<PopupMenu>,
+) -> AnyElement {
     match item {
         PopupMenuItem::Separator => div()
-            .h(px(1.0))
-            .mx_1()
+            .w_full()
+            .flex_shrink_0()
+            .h(px(1.0 / window.scale_factor()))
             .my_1()
             .bg(theme::border_variant())
             .into_any_element(),
@@ -195,7 +208,7 @@ fn render_item(item: &PopupMenuItem, ix: usize, cx: &mut Context<PopupMenu>) -> 
 }
 
 impl Render for PopupMenu {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .id("popup-menu")
             .key_context("PopupMenu")
@@ -210,14 +223,14 @@ impl Render for PopupMenu {
             .rounded_lg()
             .overflow_hidden()
             .bg(theme::bg_elevated())
-            .border_1()
+            .border(px(1.0 / window.scale_factor()))
             .border_color(theme::border_variant())
-            .shadow_md()
+            .shadow_xs()
             .children(
                 self.items
                     .iter()
                     .enumerate()
-                    .map(|(ix, item)| render_item(item, ix, cx))
+                    .map(|(ix, item)| render_item(item, ix, window, cx))
                     .collect::<Vec<_>>(),
             )
     }
@@ -311,7 +324,7 @@ where
         self.child
             .on_mouse_down(MouseButton::Right, move |event, window, cx| {
                 cx.stop_propagation();
-                let position = event.position;
+                let position = snap_to_device_pixel(event.position, window.scale_factor());
                 let menu_entity = cx.new(|cx| (builder)(PopupMenu::new(window, cx), window, cx));
 
                 state.update(cx, |menu_state, cx| {

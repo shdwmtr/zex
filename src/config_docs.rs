@@ -77,10 +77,11 @@ runtime with Ctrl-H regardless of this setting.",
         summary: "Pinned locations and sections shown in the sidebar.",
         type_hint: "array",
         default: "[]",
-        body: "A list of entries and/or sections. An entry is { \"name\": string, \"path\": \
-string }. A section is { \"section\": string, \"entries\": [entry, ...] }. Entries can be \
-listed flat or grouped into named sections -- mix and match as needed.\n\n\
-Example:\n\"sidebar\": [\n    { \"name\": \"Home\", \"path\": \"/home/you\" },\n    {\n      \"section\": \"Work\",\n      \"entries\": [\n        { \"name\": \"Projects\", \"path\": \"/home/you/Projects\" },\n        { \"name\": \"Downloads\", \"path\": \"/home/you/Downloads\" }\n      ]\n    }\n  ]",
+        body: "A list of entries, sections, and/or separators. An entry is { \"name\": \
+string, \"path\": string }. A section is { \"section\": string, \"entries\": [entry, ...] }. \
+The literal string \"separator\" draws a horizontal divider line. Entries can be listed flat \
+or grouped into named sections -- mix and match as needed.\n\n\
+Example:\n\"sidebar\": [\n    { \"name\": \"Home\", \"path\": \"/home/you\" },\n    \"separator\",\n    {\n      \"section\": \"Work\",\n      \"entries\": [\n        { \"name\": \"Projects\", \"path\": \"/home/you/Projects\" },\n        { \"name\": \"Downloads\", \"path\": \"/home/you/Downloads\" }\n      ]\n    }\n  ]",
     },
     ConfigDoc {
         key: "theme.mode",

@@ -57,11 +57,11 @@ pub fn resize_handle(
             });
             cx.new(|_| SidebarResizeGhost)
         })
-        .on_drag_move::<()>(
-            cx.listener(move |workspace, event: &DragMoveEvent<()>, _window, cx| {
+        .on_drag_move::<()>(cx.listener(
+            move |workspace, event: &DragMoveEvent<()>, _window, cx| {
                 workspace.update_sidebar_resize(f32::from(event.event.position.x), cx);
-            }),
-        )
+            },
+        ))
         .on_mouse_up(
             MouseButton::Left,
             cx.listener(|workspace, _event: &MouseUpEvent, _window, cx| {
@@ -78,6 +78,7 @@ struct Place {
 enum Row {
     Header(String),
     Place(Place),
+    Separator,
 }
 
 fn rows(sidebar_entries: &[SidebarItem]) -> Vec<Row> {
@@ -98,6 +99,7 @@ fn rows(sidebar_entries: &[SidebarItem]) -> Vec<Row> {
                     })
                 }));
             }
+            SidebarItem::Separator(_) => rows.push(Row::Separator),
         }
     }
 
@@ -107,6 +109,7 @@ fn rows(sidebar_entries: &[SidebarItem]) -> Vec<Row> {
 pub fn render(
     workspace: &Workspace,
     active: Entity<Explorer>,
+    window: &Window,
     cx: &Context<Workspace>,
 ) -> impl IntoElement {
     let entity = cx.entity();
@@ -162,6 +165,13 @@ pub fn render(
                                         .text_color(theme::text_faint())
                                         .child(title)
                                         .into_any_element(),
+                                    Row::Separator => div()
+                                        .id(ix)
+                                        .w_full()
+                                        .flex_shrink_0()
+                                        .h(px(1.0 / window.scale_factor()))
+                                        .bg(theme::border())
+                                        .into_any_element(),
                                     Row::Place(place) => {
                                         let is_active = place.path == current_dir;
                                         let path = place.path.clone();
@@ -181,7 +191,9 @@ pub fn render(
                                             .px_3()
                                             .py_0p5()
                                             .cursor_pointer()
-                                            .when(is_active, |this| this.bg(theme::bg_sidebar_selected()))
+                                            .when(is_active, |this| {
+                                                this.bg(theme::bg_sidebar_selected())
+                                            })
                                             .hover(|style| style.bg(theme::bg_sidebar_hover()))
                                             .on_click(move |_event, _window, cx| {
                                                 click_explorer.update(cx, |explorer, cx| {
@@ -192,12 +204,14 @@ pub fn render(
                                                     }
                                                 });
                                             })
-                                            .drag_over::<gpui::ExternalPaths>(|style, _paths, _window, _cx| {
-                                                style
-                                                    .bg(theme::drop_target_fill())
-                                                    .border_1()
-                                                    .border_color(theme::drop_target_border())
-                                            })
+                                            .drag_over::<gpui::ExternalPaths>(
+                                                |style, _paths, _window, _cx| {
+                                                    style
+                                                        .bg(theme::drop_target_fill())
+                                                        .border_1()
+                                                        .border_color(theme::drop_target_border())
+                                                },
+                                            )
                                             .on_drop::<gpui::ExternalPaths>(
                                                 move |paths: &gpui::ExternalPaths, _window, cx| {
                                                     let paths = paths.paths().to_vec();
@@ -233,7 +247,11 @@ pub fn render(
                                 }),
                         ),
                 )
-                .child(Scrollbar::vertical(&scroll_handle, entity.clone(), ScrollbarId::Sidebar)),
+                .child(Scrollbar::vertical(
+                    &scroll_handle,
+                    entity.clone(),
+                    ScrollbarId::Sidebar,
+                )),
         )
 }
 
@@ -253,7 +271,7 @@ mod tests {
         rows.iter()
             .filter_map(|row| match row {
                 Row::Place(place) => Some((place.label.as_str(), place.path.clone())),
-                Row::Header(_) => None,
+                Row::Header(_) | Row::Separator => None,
             })
             .collect()
     }
@@ -301,5 +319,23 @@ mod tests {
         assert!(matches!(&rows[2], Row::Place(place) if place.label == "Projects"));
         assert!(matches!(&rows[3], Row::Place(place) if place.label == "Downloads"));
         assert_eq!(rows.len(), 4);
+    }
+
+    #[test]
+    fn separator_strings_become_separator_rows() {
+        use crate::settings::SeparatorMarker;
+
+        let entries = vec![
+            SidebarItem::Entry(entry("Home", "/home/shdw")),
+            SidebarItem::Separator(SeparatorMarker),
+            SidebarItem::Entry(entry("Trash", ":trash")),
+        ];
+
+        let rows = rows(&entries);
+
+        assert!(matches!(&rows[0], Row::Place(place) if place.label == "Home"));
+        assert!(matches!(&rows[1], Row::Separator));
+        assert!(matches!(&rows[2], Row::Place(place) if place.label == "Trash"));
+        assert_eq!(rows.len(), 3);
     }
 }

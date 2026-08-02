@@ -446,7 +446,7 @@ impl Render for Workspace {
             .bg(theme::bg_window())
             .text_color(theme::text_primary())
             .when(self.sidebar_should_render(), |this| {
-                this.child(sidebar::render(self, active, cx))
+                this.child(sidebar::render(self, active, window, cx))
             })
             .child(div().flex().flex_col().flex_1().size_full().child(tree))
             .when(self.sidebar_should_render(), |this| {

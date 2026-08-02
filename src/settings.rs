@@ -152,11 +152,31 @@ pub struct SidebarSection {
     pub entries: Vec<SidebarEntry>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SeparatorMarker;
+
+impl<'de> Deserialize<'de> for SeparatorMarker {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        if value == "separator" {
+            Ok(SeparatorMarker)
+        } else {
+            Err(serde::de::Error::custom(format!(
+                "expected \"separator\", got \"{value}\""
+            )))
+        }
+    }
+}
+
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 #[serde(untagged)]
 pub enum SidebarItem {
     Section(SidebarSection),
     Entry(SidebarEntry),
+    Separator(SeparatorMarker),
 }
 
 fn config_dir() -> PathBuf {
@@ -434,6 +454,41 @@ mod tests {
                 }),
             ]
         );
+    }
+
+    #[test]
+    fn parses_sidebar_separator() {
+        let contents = r#"{
+            "sidebar": [
+                { "name": "Home", "path": "/home/shdw" },
+                "separator",
+                { "name": "Trash", "path": ":trash" }
+            ]
+        }"#;
+
+        let settings: Settings = serde_json::from_str(contents).unwrap();
+
+        assert_eq!(
+            settings.sidebar,
+            vec![
+                SidebarItem::Entry(SidebarEntry {
+                    name: "Home".into(),
+                    path: "/home/shdw".into(),
+                }),
+                SidebarItem::Separator(SeparatorMarker),
+                SidebarItem::Entry(SidebarEntry {
+                    name: "Trash".into(),
+                    path: ":trash".into(),
+                }),
+            ]
+        );
+    }
+
+    #[test]
+    fn rejects_unrecognized_sidebar_strings() {
+        let contents = r#"{ "sidebar": ["not-a-separator"] }"#;
+
+        assert!(serde_json::from_str::<Settings>(contents).is_err());
     }
 
     #[test]
