@@ -20,6 +20,29 @@ $ cargo run
 $ cargo build --profile optimized-release
 ```
 
+### Installing system-wide (Linux)
+`make install` builds the optimized release and installs the binary, `.desktop` entry, and icon:
+
+```bash
+$ make build
+$ sudo make install               # installs to /usr/local by default
+$ sudo make PREFIX=/usr install   # or a custom prefix
+```
+
+Arch Linux users can instead build the [PKGBUILD](packaging/PKGBUILD) in `packaging/`:
+
+```bash
+$ cd packaging && makepkg -si
+```
+
+To make Zex the default handler for folders (so it opens from your file manager, "Open With", etc.):
+
+```bash
+$ xdg-mime default zex.desktop inode/directory
+```
+
+Uninstall with `sudo make uninstall` (or `pacman -R zex-git` if installed via the PKGBUILD).
+
 ## Configuration
 Zex reads a JSONC config from `$XDG_CONFIG_HOME/zex/config.json`, falling back to `~/.config/zex/config.json`. Every field is optional, and comments/trailing commas are allowed.
 

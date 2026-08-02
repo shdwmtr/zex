@@ -1,0 +1,36 @@
+# Maintainer: Ethan Alexander <git@ethanjalexander.ca>
+pkgname=zex-git
+pkgver=r1.0000000
+pkgrel=1
+pkgdesc="An extremely fast file explorer and disk usage analyzer for Linux, built on GPUI"
+arch=('x86_64' 'aarch64')
+url="https://github.com/shdwmtr/zex"
+license=('Apache-2.0')
+depends=('gcc-libs' 'glibc' 'libxcb' 'libxkbcommon' 'libxkbcommon-x11' 'wayland' 'fontconfig' 'vulkan-icd-loader')
+optdepends=(
+    'vulkan-intel: Vulkan support for Intel GPUs'
+    'vulkan-radeon: Vulkan support for AMD GPUs'
+    'nvidia-utils: Vulkan support for NVIDIA GPUs'
+    'vulkan-swrast: software Vulkan fallback'
+)
+makedepends=('rust' 'pkgconf' 'git')
+provides=('zex')
+conflicts=('zex')
+source=("git+$url.git")
+sha256sums=('SKIP')
+
+pkgver() {
+    cd "$srcdir/zex"
+    printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+build() {
+    cd "$srcdir/zex"
+    cargo build --profile optimized-release --frozen
+}
+
+package() {
+    cd "$srcdir/zex"
+    make PREFIX=/usr DESTDIR="$pkgdir" install
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

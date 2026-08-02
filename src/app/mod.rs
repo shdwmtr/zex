@@ -51,6 +51,7 @@ pub fn run(settings: Settings, startup: Startup) {
             cx.open_window(
                 WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
+                    app_id: Some("zex".to_string()),
                     ..Default::default()
                 },
                 |window, cx| {

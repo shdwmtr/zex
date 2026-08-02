@@ -1,0 +1,18 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Zex
+GenericName=File Manager
+Comment=An extremely fast file explorer and disk usage analyzer
+Exec=zex %f
+Icon=zex
+Terminal=false
+Categories=System;FileManager;
+MimeType=inode/directory;
+StartupWMClass=zex
+Keywords=files;explorer;disk;usage;
+Actions=DiskUsage;
+
+[Desktop Action DiskUsage]
+Name=Disk Usage
+Exec=zex --disk-usage
