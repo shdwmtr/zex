@@ -1,8 +1,6 @@
-# Z-Explorer (zex)
-<img height="260" alt="image" align="left" src="https://github.com/user-attachments/assets/34fab8fb-c8c4-4b8d-a0d8-43bd0ca5b1bd" />
-<div align="right">If you like the project, don't forget to star it! ⭐</div>
+<img height="220" alt="image" align="left" src="https://github.com/user-attachments/assets/34fab8fb-c8c4-4b8d-a0d8-43bd0ca5b1bd" />
 
-### What is zex?
+### Z-Explorer (zex)
 An extremely fast file explorer and disk usage analyzer companion for Linux, built for the [Zed ecosystem](https://github.com/zed-industries/zed) using the same [GPUI renderer framework](https://www.gpui.rs/). 
 
 Naturally, Zex can inherit config, themes, and icon themes from Zed OOTB; its a complete visual match.
