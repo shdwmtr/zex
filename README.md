@@ -1,4 +1,4 @@
-<img height="220" alt="image" align="left" src="https://github.com/user-attachments/assets/34fab8fb-c8c4-4b8d-a0d8-43bd0ca5b1bd" />
+<img height="220" alt="image" align="left" src="https://github.com/user-attachments/assets/df8c2526-dddb-4baa-8173-14f2f7e18e3f" />
 
 ### Z-Explorer (zex)
 An extremely fast file explorer and disk usage analyzer companion for Linux, built for the [Zed ecosystem](https://github.com/zed-industries/zed) using the same [GPUI renderer framework](https://www.gpui.rs/). 
