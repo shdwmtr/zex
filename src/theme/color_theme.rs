@@ -45,6 +45,8 @@ struct ThemeStyleContent {
     ghost_element_hover: Option<Rgba>,
     #[serde(default)]
     border: Option<Rgba>,
+    #[serde(default, rename = "border.variant")]
+    border_variant: Option<Rgba>,
     #[serde(default, rename = "border.focused")]
     border_focused: Option<Rgba>,
     #[serde(default)]
@@ -237,6 +239,9 @@ fn load_bundled_default() -> ColorTheme {
             .ghost_element_hover
             .expect("bundled theme must set ghost_element.hover"),
         border: style.border.expect("bundled theme must set border"),
+        border_variant: style
+            .border_variant
+            .expect("bundled theme must set border.variant"),
         text_primary: style.text.expect("bundled theme must set text"),
         text_muted: style
             .text_muted
@@ -299,6 +304,7 @@ fn merge(style: &ThemeStyleContent, fallback: &ColorTheme) -> ColorTheme {
             .ghost_element_hover
             .unwrap_or(fallback.bg_breadcrumb_hover),
         border: style.border.unwrap_or(fallback.border),
+        border_variant: style.border_variant.unwrap_or(fallback.border_variant),
         text_primary: style.text.unwrap_or(fallback.text_primary),
         text_muted: style.text_muted.unwrap_or(fallback.text_muted),
         text_faint: style

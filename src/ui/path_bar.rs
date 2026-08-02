@@ -351,13 +351,4 @@ pub fn render(explorer: &Explorer, show_nav: bool, window: &Window, cx: &Context
             ))
         })
         .child(body)
-        .when(is_disk_usage, |el| {
-            el.child(text_button(
-                "disk-usage-close",
-                "×",
-                true,
-                |explorer, _event, window, cx| explorer.close_disk_usage(window, cx),
-                cx,
-            ))
-        })
 }

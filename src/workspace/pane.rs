@@ -193,7 +193,11 @@ impl Pane {
         let active_id = self.tabs[self.active_index].entity_id();
         let tab = self.tabs.remove(from);
         self.tabs.insert(to, tab);
-        if let Some(new_active) = self.tabs.iter().position(|tab| tab.entity_id() == active_id) {
+        if let Some(new_active) = self
+            .tabs
+            .iter()
+            .position(|tab| tab.entity_id() == active_id)
+        {
             self.active_index = new_active;
         }
         cx.notify();
@@ -221,9 +225,6 @@ impl Pane {
             .when(is_last, |el| el.border_r_1())
             .border_color(theme::border())
             .when(is_active, |el| el.bg(theme::bg_root()))
-            .when(!is_active, |el| {
-                el.cursor_pointer().hover(|style| style.bg(theme::bg_hover()))
-            })
             .on_click(cx.listener(move |pane, _event: &ClickEvent, _window, cx| {
                 pane.activate(index, cx);
             }))
@@ -237,25 +238,27 @@ impl Pane {
             .drag_over::<TabDragPayload>(|style, _dragged, _window, _cx| {
                 style.border_color(theme::drop_target_border())
             })
-            .on_drop::<TabDragPayload>(cx.listener(move |pane, dragged: &TabDragPayload, _window, cx| {
-                if dragged.source_pane.entity_id() == cx.entity().entity_id() {
-                    pane.reorder_tab(dragged.tab_ix, index, cx);
-                } else if let Some(explorer) = dragged
-                    .source_pane
-                    .update(cx, |source, cx| source.take_tab(dragged.tab_ix, cx))
-                {
-                    pane.insert_tab(index, explorer, cx);
-                }
-                cx.emit(PaneEvent::TabDropped);
-                cx.notify();
-            }))
+            .on_drop::<TabDragPayload>(cx.listener(
+                move |pane, dragged: &TabDragPayload, _window, cx| {
+                    if dragged.source_pane.entity_id() == cx.entity().entity_id() {
+                        pane.reorder_tab(dragged.tab_ix, index, cx);
+                    } else if let Some(explorer) = dragged
+                        .source_pane
+                        .update(cx, |source, cx| source.take_tab(dragged.tab_ix, cx))
+                    {
+                        pane.insert_tab(index, explorer, cx);
+                    }
+                    cx.emit(PaneEvent::TabDropped);
+                    cx.notify();
+                },
+            ))
             .child(div().w(px(18.0)).flex_shrink_0())
             .child(
                 div()
                     .flex_1()
                     .overflow_hidden()
                     .text_center()
-                    .text_sm()
+                    .text_base()
                     .text_color(theme::text_primary())
                     .child(label),
             )
@@ -263,16 +266,22 @@ impl Pane {
                 div()
                     .id(("close-tab", index))
                     .flex_shrink_0()
-                    .w(px(18.0))
+                    .size(px(18.0))
                     .flex()
                     .items_center()
                     .justify_center()
+                    .overflow_hidden()
                     .cursor_pointer()
                     .rounded_md()
+                    .text_2xl()
                     .text_color(theme::text_faint())
                     .opacity(0.0)
                     .group_hover(format!("tab-{index}"), |style| style.opacity(1.0))
-                    .hover(|style| style.bg(theme::bg_hover()).text_color(theme::text_primary()))
+                    .hover(|style| {
+                        style
+                            .bg(theme::bg_hover())
+                            .text_color(theme::text_primary())
+                    })
                     .on_click(cx.listener(move |pane, _event: &ClickEvent, _window, cx| {
                         cx.stop_propagation();
                         pane.close_tab(index, cx);
@@ -369,34 +378,6 @@ impl Pane {
                             .h_full()
                             .border_b_1()
                             .border_color(theme::border()),
-                    ),
-            )
-            .child(
-                div()
-                    .h_full()
-                    .w(px(24.0))
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .border_b_1()
-                    .border_color(theme::border())
-                    .child(
-                        div()
-                            .id("new-tab")
-                            .size(px(20.0))
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .rounded_md()
-                            .cursor_pointer()
-                            .text_color(theme::text_muted())
-                            .hover(|style| {
-                                style.bg(theme::bg_hover()).text_color(theme::text_primary())
-                            })
-                            .on_click(cx.listener(|pane, _event: &ClickEvent, window, cx| {
-                                pane.spawn_new_tab(window, cx);
-                            }))
-                            .child("+"),
                     ),
             )
     }

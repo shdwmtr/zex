@@ -101,7 +101,7 @@ fn tooltip(tree: &DiskUsageTree, state: &crate::explorer::disk_usage::DiskUsageS
             .flex_col()
             .gap_1()
             .p_2()
-            .max_w(px(280.0))
+            .w(px(240.0))
             .bg(theme::bg_panel())
             .border_1()
             .border_color(theme::border())

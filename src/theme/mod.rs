@@ -22,6 +22,7 @@ pub struct ColorTheme {
     pub bg_sidebar_selected: Rgba,
     pub bg_breadcrumb_hover: Rgba,
     pub border: Rgba,
+    pub border_variant: Rgba,
     pub text_primary: Rgba,
     pub text_muted: Rgba,
     pub text_faint: Rgba,
@@ -55,6 +56,7 @@ impl ColorTheme {
             bg_sidebar_selected: rgb(0x404040),
             bg_breadcrumb_hover: rgb(0x3a3a3a),
             border: rgb(0x3a3a3a),
+            border_variant: rgb(0x454545),
             text_primary: rgb(0xe0e0e0),
             text_muted: rgb(0x999999),
             text_faint: rgb(0x777777),
@@ -153,6 +155,9 @@ pub fn bg_breadcrumb_hover() -> Rgba {
 }
 pub fn border() -> Rgba {
     active().border
+}
+pub fn border_variant() -> Rgba {
+    active().border_variant
 }
 
 pub fn text_primary() -> Rgba {

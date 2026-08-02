@@ -6,8 +6,8 @@ pub mod tree_list;
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, Context, FontWeight, InteractiveElement, IntoElement, ParentElement,
-    StatefulInteractiveElement, Styled, Window, div, px,
+    AnyElement, ClickEvent, Context, FontWeight, InteractiveElement, IntoElement, ParentElement,
+    StatefulInteractiveElement, Styled, Window, div, px, relative,
 };
 
 use crate::explorer::Explorer;
@@ -70,7 +70,57 @@ pub fn render_panel(
                 )
         }))
         .child(content)
+        .child(render_toolbar(explorer, cx))
         .children(warning_dialog::render(explorer, cx))
+}
+
+fn render_toolbar(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoElement {
+    let state = explorer.disk_usage.as_ref().unwrap();
+    let summary = match &state.scan {
+        ScanState::Ready { tree } => {
+            let root_id = tree.find(&state.current_root).unwrap_or(tree.root());
+            let node = tree.get(root_id);
+            Some(format!("{} items • {}", node.item_count, format_size(node.size)))
+        }
+        _ => None,
+    };
+
+    div()
+        .w_full()
+        .flex()
+        .flex_row()
+        .items_center()
+        .justify_between()
+        .px_3()
+        .py_1()
+        .text_sm()
+        .line_height(relative(1.2))
+        .bg(theme::bg_bar())
+        .border_t_1()
+        .border_color(theme::border())
+        .text_color(theme::text_muted())
+        .child(div().children(summary))
+        .child(
+            div()
+                .id("disk-usage-return")
+                .flex()
+                .flex_row()
+                .items_center()
+                .gap_1()
+                .px_2()
+                .py_1()
+                .rounded_md()
+                .cursor_pointer()
+                .hover(|style| {
+                    style
+                        .bg(theme::bg_breadcrumb_hover())
+                        .text_color(theme::text_primary())
+                })
+                .on_click(cx.listener(|explorer, _event: &ClickEvent, window, cx| {
+                    explorer.close_disk_usage(window, cx);
+                }))
+                .child("Return to Normal View"),
+        )
 }
 
 fn centered_panel(content: impl IntoElement) -> impl IntoElement {

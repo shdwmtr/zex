@@ -4,7 +4,7 @@ use gpui::{
     AnyElement, App, AppContext, ClickEvent, Context, Corner, DismissEvent, Entity, EventEmitter,
     FocusHandle, InteractiveElement, IntoElement, KeyBinding, MouseButton, ParentElement, Pixels,
     Point, Render, RenderOnce, SharedString, StatefulInteractiveElement, Styled, Subscription,
-    Window, actions, anchored, deferred, div, prelude::FluentBuilder as _, px, svg,
+    Window, actions, anchored, deferred, div, prelude::FluentBuilder as _, px, relative, svg,
 };
 
 use crate::theme;
@@ -122,7 +122,7 @@ fn render_item(item: &PopupMenuItem, ix: usize, cx: &mut Context<PopupMenu>) -> 
             .h(px(1.0))
             .mx_1()
             .my_1()
-            .bg(theme::border())
+            .bg(theme::border_variant())
             .into_any_element(),
         PopupMenuItem::Item {
             label,
@@ -142,9 +142,9 @@ fn render_item(item: &PopupMenuItem, ix: usize, cx: &mut Context<PopupMenu>) -> 
                 .items_center()
                 .gap_2()
                 .mx_1()
-                .px_3()
+                .px_2()
                 .py_1()
-                .rounded_md()
+                .rounded_sm()
                 .min_w(px(160.0))
                 .when(disabled, |el| el.opacity(0.4))
                 .when(!disabled, |el| {
@@ -176,12 +176,7 @@ fn render_item(item: &PopupMenuItem, ix: usize, cx: &mut Context<PopupMenu>) -> 
                 })
                 .child(div().flex_1().child(label.clone()))
                 .when_some(shortcut.clone(), |el, shortcut| {
-                    el.child(
-                        div()
-                            .pl_4()
-                            .text_color(theme::text_faint())
-                            .child(shortcut),
-                    )
+                    el.child(div().pl_4().text_color(theme::text_faint()).child(shortcut))
                 })
                 .when_some(*checked, |el, checked| {
                     el.child(
@@ -211,11 +206,12 @@ impl Render for PopupMenu {
             .flex()
             .flex_col()
             .py_1()
+            .line_height(relative(1.2))
             .rounded_lg()
             .overflow_hidden()
             .bg(theme::bg_elevated())
             .border_1()
-            .border_color(theme::border())
+            .border_color(theme::border_variant())
             .shadow_md()
             .children(
                 self.items

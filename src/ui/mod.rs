@@ -10,5 +10,6 @@ pub mod scrollbar;
 pub mod sidebar;
 pub mod status_bar;
 pub mod text_input;
+pub mod tooltip;
 pub mod warning_dialog;
 pub mod window_chrome;

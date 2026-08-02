@@ -111,7 +111,12 @@ pub fn render(
 ) -> impl IntoElement {
     let entity = cx.entity();
     let scroll_handle = workspace.sidebar_scroll_handle.clone();
-    let current_dir = active.read(cx).current_dir().to_path_buf();
+    let explorer = active.read(cx);
+    let current_dir = explorer
+        .disk_usage
+        .as_ref()
+        .map(|state| state.current_root.clone())
+        .unwrap_or_else(|| explorer.current_dir().to_path_buf());
 
     div()
         .id("sidebar")
@@ -180,7 +185,11 @@ pub fn render(
                                             .hover(|style| style.bg(theme::bg_sidebar_hover()))
                                             .on_click(move |_event, _window, cx| {
                                                 click_explorer.update(cx, |explorer, cx| {
-                                                    explorer.navigate_to(path.clone(), cx);
+                                                    if explorer.disk_usage.is_some() {
+                                                        explorer.drill_into(path.clone(), cx);
+                                                    } else {
+                                                        explorer.navigate_to(path.clone(), cx);
+                                                    }
                                                 });
                                             })
                                             .drag_over::<gpui::ExternalPaths>(|style, _paths, _window, _cx| {

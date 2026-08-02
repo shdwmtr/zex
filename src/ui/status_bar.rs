@@ -1,8 +1,9 @@
-use gpui::{Context, ElementId, IntoElement, Stateful, div, prelude::*, px, svg};
+use gpui::{Context, ElementId, IntoElement, Stateful, div, prelude::*, px, relative, svg};
 
 use crate::explorer::Explorer;
 use crate::filesystem::entry::format_size;
 use crate::theme;
+use crate::ui::tooltip::Tooltip;
 
 fn status_button(id: impl Into<ElementId>) -> Stateful<gpui::Div> {
     div()
@@ -62,9 +63,11 @@ fn git_indicator(explorer: &Explorer, cx: &Context<Explorer>) -> Option<impl Int
 
     Some(
         status_button("git-branch-button")
-            .on_click(cx.listener(|explorer, _event: &gpui::ClickEvent, _window, cx| {
-                explorer.refresh_git(cx);
-            }))
+            .on_click(
+                cx.listener(|explorer, _event: &gpui::ClickEvent, _window, cx| {
+                    explorer.refresh_git(cx);
+                }),
+            )
             .child(
                 svg()
                     .flex_shrink_0()
@@ -124,7 +127,11 @@ pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoElement {
         .justify_between()
         .px_3()
         .py_1()
+        .text_sm()
+        .line_height(relative(1.2))
         .bg(theme::bg_bar())
+        .border_t_1()
+        .border_color(theme::border())
         .text_color(theme::text_muted())
         .child(
             div()
@@ -141,12 +148,31 @@ pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> impl IntoElement {
                 .items_center()
                 .gap_2()
                 .children(git_indicator)
+                .child(explorer.free_space_label.clone())
+                .child(div().w(px(1.0)).h(px(14.0)).bg(theme::border()))
                 .child(
-                    status_button("free-space-button")
-                        .on_click(cx.listener(|explorer, _event: &gpui::ClickEvent, window, cx| {
-                            explorer.open_disk_usage(None, window, cx);
-                        }))
-                        .child(explorer.free_space_label.clone()),
+                    div()
+                        .id("disk-usage-button")
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .size(px(20.0))
+                        .rounded_md()
+                        .cursor_pointer()
+                        .hover(|style| style.bg(theme::bg_breadcrumb_hover()))
+                        .on_click(
+                            cx.listener(|explorer, _event: &gpui::ClickEvent, window, cx| {
+                                explorer.open_disk_usage(None, window, cx);
+                            }),
+                        )
+                        .tooltip(Tooltip::build("Open Disk Analyzer"))
+                        .child(
+                            svg()
+                                .flex_shrink_0()
+                                .path("icons/pie-chart.svg")
+                                .size(px(12.0))
+                                .text_color(theme::text_muted()),
+                        ),
                 ),
         )
 }
