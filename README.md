@@ -20,7 +20,7 @@ $ cargo run
 $ cargo build --profile optimized-release
 ```
 
-### Installation
+## Installation
 `make install` builds the optimized release and installs the binary, `.desktop` entry, and icon:
 
 ```bash
