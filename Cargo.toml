@@ -25,7 +25,5 @@ gpui = { path = "vendor/gpui" }
 
 [profile.optimized-release]
 inherits = "release"
-lto = "fat"
-codegen-units = 1
 panic = "abort"
 strip = true

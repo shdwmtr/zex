@@ -1,2 +1,6 @@
 /target
 /vendor/gpui/target
+/packaging/zex
+/packaging/src
+/packaging/pkg
+/packaging/zex*
