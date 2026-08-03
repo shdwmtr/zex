@@ -10,7 +10,7 @@ Naturally, Zex can inherit config, themes, and icon themes from Zed OOTB; its a 
 ![](https://github.com/user-attachments/assets/5fb253a2-c27e-4d4c-8b1e-4b364da86564)
 
 ## Building from source
-Zex is currently source-only until the 1.0.0 release.
+Zex requires the recent 2024 rust compiler toolchain.
 
 ```bash
 # Run zexplorer
