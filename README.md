@@ -53,6 +53,34 @@ $ zex config
 $ zex config theme.mode
 ```
 
+### Boilerplate configuration
+`$XDG_CONFIG_HOME/zex/config.json`
+
+```json
+{
+    "inherit_from_zed": true,
+    "show_hidden_files": true,
+    "sidebar": [
+        { "name": "Home", "path": "~" },
+        "separator",
+        {
+            "section": "Places",
+            "entries": [
+                { "name": "Downloads", "path": "~/Downloads" },
+                { "name": "Documents", "path": "~/Documents" },
+                { "name": "Development", "path": "~/Development" }
+            ]
+        },
+        "separator",
+        { "name": "Local Disk", "path": "/" },
+        { "name": "Trash", "path": ":trash" }
+    ],
+    "git": {
+        "enabled": true
+    }
+}
+```
+
 ## Contributions
 Contributions are welcome; there's plenty of room to help: new features, bug fixes, performance improvements, or just cleaning up rough edges. Open a PR, we'll take a look.
 
