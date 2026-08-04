@@ -20,6 +20,14 @@ pub const CONFIG_DOCS: &[ConfigDoc] = &[
 string to point at a specific settings file (e.g. \"~/.config/zed/settings.json\" or an \
 absolute path). Only fields zex understands are used from it -- anything Zed-specific with \
 no zex equivalent is ignored.\n\n\
+Fields read from Zed's config:\n\
+- icon_theme\n\
+- ui_font_family\n\
+- ui_font_size\n\
+- ui_font_weight\n\
+- theme.mode, theme.light, theme.dark\n\n\
+Everything else in zex's own schema (show_hidden_files, sidebar, sidebar_visible, git, \
+disk_usage) is zex-specific and has no Zed equivalent to inherit, even if set to true.\n\n\
 Any field you also declare in zex's own config.json wins, merged in field by field rather \
 than replacing whole sections -- so setting \"theme\": { \"light\": \"...\" } in zex overrides \
 just that one field while still picking up everything else (icon theme, fonts, the rest of \
