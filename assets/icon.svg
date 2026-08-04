@@ -1,6 +1,5 @@
-<svg viewBox="0 0 1254 1254" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="627" cy="627" r="627" fill="#000000"/>
-  <path fill="#ffffff" d="
+<svg viewBox="288 330 674 554" xmlns="http://www.w3.org/2000/svg">
+  <path fill="#ffffff" fill-rule="evenodd" d="
     M 328 330
     L 558 330
     C 578 330 592 338 604 352
@@ -14,14 +13,12 @@
     L 288 370
     C 288 348 306 330 328 330
     Z
-  "/>
-  <path fill="#000000" d="
     M 573 500
     L 870 500
     L 550 819
     L 750 820
-    L 680 890
-    L 383 890
+    L 680 884
+    L 383 884
     L 703 571
     L 503 570
     Z
