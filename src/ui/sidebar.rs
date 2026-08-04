@@ -7,7 +7,7 @@ use gpui::{
 
 use crate::explorer::Explorer;
 use crate::explorer::drag::ScrollbarId;
-use crate::settings::SidebarItem;
+use crate::settings::{SidebarItem, expand_tilde};
 use crate::theme;
 use crate::theme::icon_theme;
 use crate::ui::context_menu;
@@ -88,14 +88,14 @@ fn rows(sidebar_entries: &[SidebarItem]) -> Vec<Row> {
         match item {
             SidebarItem::Entry(entry) => rows.push(Row::Place(Place {
                 label: entry.name.clone(),
-                path: PathBuf::from(&entry.path),
+                path: expand_tilde(&entry.path),
             })),
             SidebarItem::Section(section) => {
                 rows.push(Row::Header(section.section.clone()));
                 rows.extend(section.entries.iter().map(|entry| {
                     Row::Place(Place {
                         label: entry.name.clone(),
-                        path: PathBuf::from(&entry.path),
+                        path: expand_tilde(&entry.path),
                     })
                 }));
             }
@@ -291,6 +291,20 @@ mod tests {
                 ("Projects", PathBuf::from("/home/user/Projects")),
                 ("Root", PathBuf::from("/")),
             ]
+        );
+    }
+
+    #[test]
+    fn tilde_prefixed_paths_expand_to_the_home_directory() {
+        use crate::settings::expand_tilde;
+
+        let entries = vec![SidebarItem::Entry(entry("Projects", "~/Projects"))];
+
+        let rows = rows(&entries);
+
+        assert_eq!(
+            place_labels_and_paths(&rows),
+            vec![("Projects", expand_tilde("~/Projects"))]
         );
     }
 

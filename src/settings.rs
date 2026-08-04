@@ -200,7 +200,7 @@ fn default_zed_settings_path() -> PathBuf {
     config_dir().join("zed").join("settings.json")
 }
 
-fn expand_tilde(path: &str) -> PathBuf {
+pub(crate) fn expand_tilde(path: &str) -> PathBuf {
     if let Some(rest) = path.strip_prefix("~/") {
         return home_dir().join(rest);
     }

@@ -1,13 +1,70 @@
+use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
+use std::sync::Arc;
+use std::thread;
 use std::time::Duration;
 
 use gpui::Context;
-use notify::Watcher;
+use inotify::{Inotify, WatchMask};
 
 use crate::filesystem::entry::{self, FsEntry};
 
 use super::{Explorer, TRASH_VIRTUAL_PATH};
+
+const WATCH_MASK: WatchMask = WatchMask::ATTRIB
+    .union(WatchMask::CREATE)
+    .union(WatchMask::DELETE)
+    .union(WatchMask::CLOSE_WRITE)
+    .union(WatchMask::MODIFY)
+    .union(WatchMask::MOVED_FROM)
+    .union(WatchMask::MOVED_TO)
+    .union(WatchMask::DELETE_SELF)
+    .union(WatchMask::MOVE_SELF);
+
+/// Watches a single directory (non-recursively) for changes, polling the
+/// non-blocking inotify fd on a background thread since we only care whether
+/// *something* changed, not what.
+pub(super) struct DirWatcher {
+    stop: Arc<AtomicBool>,
+}
+
+impl DirWatcher {
+    fn spawn(dir: &Path) -> io::Result<(Self, mpsc::Receiver<()>)> {
+        let mut inotify = Inotify::init()?;
+        inotify.watches().add(dir, WATCH_MASK)?;
+
+        let (tx, rx) = mpsc::channel();
+        let stop = Arc::new(AtomicBool::new(false));
+        let thread_stop = stop.clone();
+
+        thread::spawn(move || {
+            let mut buffer = [0u8; 4096];
+            while !thread_stop.load(Ordering::Relaxed) {
+                match inotify.read_events(&mut buffer) {
+                    Ok(events) => {
+                        if events.count() > 0 && tx.send(()).is_err() {
+                            break;
+                        }
+                    }
+                    Err(err) if err.kind() == io::ErrorKind::WouldBlock => {
+                        thread::sleep(Duration::from_millis(200));
+                    }
+                    Err(_) => break,
+                }
+            }
+        });
+
+        Ok((Self { stop }, rx))
+    }
+}
+
+impl Drop for DirWatcher {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Relaxed);
+    }
+}
 
 impl Explorer {
     pub fn current_dir(&self) -> &Path {
@@ -112,16 +169,14 @@ impl Explorer {
     }
 
     fn watch_current_dir(&mut self, cx: &mut Context<Self>) {
-        let (tx, rx) = mpsc::channel::<notify::Result<notify::Event>>();
-
-        let mut watcher = notify::recommended_watcher(move |event| {
-            let _ = tx.send(event);
-        })
-        .ok();
-
-        if let Some(watcher) = watcher.as_mut() {
-            let _ = watcher.watch(self.history.current(), notify::RecursiveMode::NonRecursive);
-        }
+        let (watcher, rx) = match DirWatcher::spawn(self.history.current()) {
+            Ok((watcher, rx)) => (Some(watcher), rx),
+            Err(_) => {
+                self.watcher = None;
+                self.watch_task = None;
+                return;
+            }
+        };
         self.watcher = watcher;
 
         self.watch_task = Some(cx.spawn(async move |weak, cx| {
@@ -268,5 +323,28 @@ impl Explorer {
     pub fn dismiss_op_error(&mut self, cx: &mut Context<Self>) {
         self.op_error = None;
         cx.notify();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::DirWatcher;
+    use std::fs;
+    use std::time::Duration;
+
+    #[test]
+    fn detects_file_creation_in_watched_dir() {
+        let dir = std::env::temp_dir().join(format!("zex_watch_smoke_{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+
+        let (watcher, rx) = DirWatcher::spawn(&dir).expect("failed to spawn watcher");
+
+        fs::write(dir.join("new_file.txt"), b"hi").unwrap();
+
+        let got = rx.recv_timeout(Duration::from_secs(2)).is_ok();
+        drop(watcher);
+        fs::remove_dir_all(&dir).ok();
+
+        assert!(got, "expected a change notification after file creation");
     }
 }

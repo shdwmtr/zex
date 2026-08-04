@@ -12,8 +12,6 @@ mod workspace;
 
 use std::path::PathBuf;
 
-use clap::Parser;
-
 fn main() {
     let cli = cli::Cli::parse();
 

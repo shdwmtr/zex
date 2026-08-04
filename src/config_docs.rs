@@ -80,8 +80,9 @@ runtime with Ctrl-H regardless of this setting.",
         body: "A list of entries, sections, and/or separators. An entry is { \"name\": \
 string, \"path\": string }. A section is { \"section\": string, \"entries\": [entry, ...] }. \
 The literal string \"separator\" draws a horizontal divider line. Entries can be listed flat \
-or grouped into named sections -- mix and match as needed.\n\n\
-Example:\n\"sidebar\": [\n    { \"name\": \"Home\", \"path\": \"/home/you\" },\n    \"separator\",\n    {\n      \"section\": \"Work\",\n      \"entries\": [\n        { \"name\": \"Projects\", \"path\": \"/home/you/Projects\" },\n        { \"name\": \"Downloads\", \"path\": \"/home/you/Downloads\" }\n      ]\n    }\n  ]",
+or grouped into named sections -- mix and match as needed. An entry's path may start with \
+\"~\" to reference your home directory.\n\n\
+Example:\n\"sidebar\": [\n    { \"name\": \"Home\", \"path\": \"~\" },\n    \"separator\",\n    {\n      \"section\": \"Work\",\n      \"entries\": [\n        { \"name\": \"Projects\", \"path\": \"~/Projects\" },\n        { \"name\": \"Downloads\", \"path\": \"~/Downloads\" }\n      ]\n    }\n  ]",
     },
     ConfigDoc {
         key: "theme.mode",

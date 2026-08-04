@@ -1,38 +1,120 @@
 use std::path::{Path, PathBuf};
 
-use clap::{Parser, Subcommand};
+const HELP: &str = "\
+A fast, keyboard-driven file explorer
 
-#[derive(Parser, Debug)]
-#[command(name = "zex", version, about = "A fast, keyboard-driven file explorer")]
+Usage: zex [OPTIONS] [PATH]
+       zex config [KEY]
+
+Arguments:
+  [PATH]  Directory to open, or a file whose parent directory should open
+          with it selected. Relative paths resolve against the current
+          working directory
+
+Options:
+      --disk-usage      Open straight into the disk usage view, rooted at
+                         PATH if given
+      --select <FILE>   Open FILE's parent directory with FILE selected
+      --config <FILE>   Load settings from FILE instead of the default
+                         config location
+  -h, --help            Print help
+  -V, --version         Print version
+
+Commands:
+  config [KEY]  List config keys, or show docs for one (e.g. `zex config
+                inherit_from_zed`)
+";
+
+#[derive(Debug)]
 pub struct Cli {
-    /// Directory to open, or a file whose parent directory should open with it selected.
-    /// Relative paths resolve against the current working directory.
-    #[arg(value_name = "PATH")]
     path: Option<PathBuf>,
-
-    /// Open straight into the disk usage view, rooted at PATH if given.
-    #[arg(long)]
     disk_usage: bool,
-
-    /// Open FILE's parent directory with FILE selected.
-    #[arg(long, value_name = "FILE", conflicts_with = "path")]
     select: Option<PathBuf>,
-
-    /// Load settings from FILE instead of the default config location.
-    #[arg(long, value_name = "FILE")]
     config: Option<PathBuf>,
-
-    #[command(subcommand)]
     pub command: Option<Command>,
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(Debug)]
 pub enum Command {
-    /// List config keys, or show docs for one (e.g. `zex config inherit_from_zed`).
-    Config {
-        /// A config key, e.g. "theme.mode" or "git.status.badge_style".
-        key: Option<String>,
-    },
+    Config { key: Option<String> },
+}
+
+impl Cli {
+    pub fn parse() -> Self {
+        match Self::try_parse(std::env::args_os().skip(1)) {
+            Ok(cli) => cli,
+            Err(err) => {
+                eprintln!("error: {err}");
+                eprintln!("\n{HELP}");
+                std::process::exit(2);
+            }
+        }
+    }
+
+    fn try_parse(args: impl Iterator<Item = std::ffi::OsString>) -> Result<Self, String> {
+        let mut path: Option<PathBuf> = None;
+        let mut disk_usage = false;
+        let mut select: Option<PathBuf> = None;
+        let mut config: Option<PathBuf> = None;
+        let mut command: Option<Command> = None;
+
+        let mut args = args.peekable();
+        if let Some(first) = args.peek() {
+            if first == "config" {
+                args.next();
+                let key = args.next().map(|s| s.to_string_lossy().into_owned());
+                if let Some(extra) = args.next() {
+                    return Err(format!("unexpected argument '{}'", extra.to_string_lossy()));
+                }
+                command = Some(Command::Config { key });
+                return Ok(Cli { path, disk_usage, select, config, command });
+            }
+        }
+
+        while let Some(arg) = args.next() {
+            let arg_str = arg.to_string_lossy();
+            match arg_str.as_ref() {
+                "-h" | "--help" => {
+                    print!("{HELP}");
+                    std::process::exit(0);
+                }
+                "-V" | "--version" => {
+                    println!("zex {}", env!("CARGO_PKG_VERSION"));
+                    std::process::exit(0);
+                }
+                "--disk-usage" => disk_usage = true,
+                "--select" => {
+                    let value = args
+                        .next()
+                        .ok_or_else(|| "--select requires a value".to_string())?;
+                    if path.is_some() {
+                        return Err("the argument '--select <FILE>' cannot be used with a PATH argument".into());
+                    }
+                    select = Some(PathBuf::from(value));
+                }
+                "--config" => {
+                    let value = args
+                        .next()
+                        .ok_or_else(|| "--config requires a value".to_string())?;
+                    config = Some(PathBuf::from(value));
+                }
+                _ if arg_str.starts_with("--") => {
+                    return Err(format!("unknown option '{arg_str}'"));
+                }
+                _ => {
+                    if select.is_some() {
+                        return Err("the argument '--select <FILE>' cannot be used with a PATH argument".into());
+                    }
+                    if path.is_some() {
+                        return Err(format!("unexpected argument '{arg_str}'"));
+                    }
+                    path = Some(PathBuf::from(arg));
+                }
+            }
+        }
+
+        Ok(Cli { path, disk_usage, select, config, command })
+    }
 }
 
 #[derive(Debug)]

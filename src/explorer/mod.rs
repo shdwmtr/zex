@@ -103,7 +103,7 @@ pub struct Explorer {
     pub sort_direction: SortDirection,
     pub box_select: Option<BoxSelectDrag>,
     pub scrollbar_drag: Option<ScrollbarDrag>,
-    watcher: Option<notify::RecommendedWatcher>,
+    watcher: Option<navigation::DirWatcher>,
     watch_task: Option<Task<()>>,
     free_space_task: Option<Task<()>>,
     pub git_settings: GitSettings,
