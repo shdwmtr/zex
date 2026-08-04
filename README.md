@@ -6,7 +6,7 @@ An extremely fast explorer and disk usage analyzer companion for the [Zed ecosys
 Zex can inherit config, themes, and icon themes from Zed out-of-the-box.
 
 ### Preview (Zed on left, Zex on right)
-![](https://github.com/user-attachments/assets/5fb253a2-c27e-4d4c-8b1e-4b364da86564)
+![](https://github.com/user-attachments/assets/cfb421d0-2fbb-4c20-8302-95d4346c6c5f)
 
 ## Installation
 
