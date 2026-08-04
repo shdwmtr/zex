@@ -1,10 +1,12 @@
-# Z-Explorer (zex)
+<img height="220" alt="image" align="left" src="https://github.com/user-attachments/assets/df8c2526-dddb-4baa-8173-14f2f7e18e3f" />
 
+### Z-Explorer (zex)
 An extremely fast file explorer and disk usage analyzer companion for Linux, built for the [Zed ecosystem](https://github.com/zed-industries/zed) using the same [GPUI renderer framework](https://www.gpui.rs/). 
 
 Naturally, Zex can inherit config, themes, and icon themes from Zed OOTB; its a complete visual match.
 
-## Preview (Zed on left, Zex on right)
+&nbsp;
+### Preview (Zed on left, Zex on right)
 ![](https://github.com/user-attachments/assets/5fb253a2-c27e-4d4c-8b1e-4b364da86564)
 
 ## Building from source
@@ -56,10 +58,11 @@ $ zex config theme.mode
 ### Boilerplate configuration
 `$XDG_CONFIG_HOME/zex/config.json`
 
-```json
+```jsonc
 {
-    "inherit_from_zed": true,
+    "inherit_from_zed": true, /* $ zex config inherit_from_zed */ 
     "show_hidden_files": true,
+    /* Empty sidebars are not rendered by zex. */ 
     "sidebar": [
         { "name": "Home", "path": "~" },
         "separator",
@@ -73,7 +76,7 @@ $ zex config theme.mode
         },
         "separator",
         { "name": "Local Disk", "path": "/" },
-        { "name": "Trash", "path": ":trash" }
+        { "name": "Trash", "path": ":trash" } /* :trash is a virtual path */
     ],
     "git": {
         "enabled": true
