@@ -1,13 +1,10 @@
-<img height="220" alt="image" align="left" src="https://github.com/user-attachments/assets/df8c2526-dddb-4baa-8173-14f2f7e18e3f" />
+<img height="80" alt="icon" src="assets/icon.svg" />
 
-[![Build](https://github.com/shdwmtr/zex/actions/workflows/build.yml/badge.svg)](https://github.com/shdwmtr/zex/actions/workflows/build.yml)
-
-### Z-Explorer (zex)
+# Z-Explorer (zex)
 An extremely fast file explorer and disk usage analyzer companion for Linux, built for the [Zed ecosystem](https://github.com/zed-industries/zed) using the same [GPUI renderer framework](https://www.gpui.rs/). 
 
-Naturally, Zex can inherit config, themes, and icon themes from Zed OOTB; its a complete visual match.
+Zex can inherit config, themes, and icon themes from Zed out-of-the-box.
 
-&nbsp;
 ### Preview (Zed on left, Zex on right)
 ![](https://github.com/user-attachments/assets/5fb253a2-c27e-4d4c-8b1e-4b364da86564)
 
