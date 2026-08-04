@@ -1,6 +1,6 @@
 # Maintainer: Ethan Alexander <git@ethanjalexander.ca>
 pkgname=zex-git
-pkgver=r47.27e70fd
+pkgver=r49.1bcd8e3
 pkgrel=1
 pkgdesc="An extremely fast file explorer and disk usage analyzer for Linux, built on GPUI"
 arch=('x86_64' 'aarch64')

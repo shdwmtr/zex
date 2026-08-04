@@ -10,11 +10,16 @@ PROFILE="optimized-release"
 BIN="target/$PROFILE/zex"
 APP_DIR="target/macos/Zex.app"
 CONTENTS="$APP_DIR/Contents"
-ICON_SRC="assets/icon.png"
+ICON_SRC="assets/icon.svg"
 VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
 
 if [ ! -f "$BIN" ]; then
     echo "error: $BIN not found; run 'cargo build --profile $PROFILE' first" >&2
+    exit 1
+fi
+
+if ! command -v rsvg-convert >/dev/null 2>&1; then
+    echo "error: rsvg-convert not found; run 'brew install librsvg' first" >&2
     exit 1
 fi
 
@@ -26,14 +31,15 @@ cp "$BIN" "$CONTENTS/MacOS/zex"
 
 sed "s/__VERSION__/$VERSION/g" packaging/macos/Info.plist > "$CONTENTS/Info.plist"
 
-# Build zex.icns from the source PNG. iconutil wants a *.iconset directory of
-# exact power-of-two sizes; sips generates each from the 1080x1080 source.
+# Build zex.icns from the source SVG. iconutil wants a *.iconset directory of
+# exact power-of-two sizes; rsvg-convert rasterizes each straight from the
+# vector source.
 ICONSET=$(mktemp -d)/zex.iconset
 mkdir -p "$ICONSET"
 for sz in 16 32 128 256 512; do
-    sips -z "$sz" "$sz" "$ICON_SRC" --out "$ICONSET/icon_${sz}x${sz}.png" >/dev/null
+    rsvg-convert -w "$sz" -h "$sz" "$ICON_SRC" -o "$ICONSET/icon_${sz}x${sz}.png"
     dbl=$((sz * 2))
-    sips -z "$dbl" "$dbl" "$ICON_SRC" --out "$ICONSET/icon_${sz}x${sz}@2x.png" >/dev/null
+    rsvg-convert -w "$dbl" -h "$dbl" "$ICON_SRC" -o "$ICONSET/icon_${sz}x${sz}@2x.png"
 done
 iconutil -c icns "$ICONSET" -o "$CONTENTS/Resources/zex.icns"
 rm -rf "$(dirname "$ICONSET")"

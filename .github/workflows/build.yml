@@ -31,6 +31,9 @@ jobs:
       - name: Ensure the Metal toolchain is installed
         run: xcodebuild -downloadComponent MetalToolchain || true
 
+      - name: Install librsvg
+        run: brew install librsvg
+
       - name: Build Zex.app
         run: make app
 
@@ -60,7 +63,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential pkg-config \
+            build-essential pkg-config librsvg2-bin \
             libxcb1-dev libxcb-shape0-dev libxcb-xfixes0-dev \
             libxkbcommon-dev libxkbcommon-x11-dev \
             libwayland-dev libfontconfig1-dev libvulkan-dev
@@ -71,10 +74,12 @@ jobs:
       - name: Assemble AppDir
         run: |
           set -eu
-          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/512x512/apps
+          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/512x512/apps AppDir/usr/share/icons/hicolor/scalable/apps
           cp target/optimized-release/zex AppDir/usr/bin/zex
           cp packaging/zex.desktop AppDir/usr/share/applications/zex.desktop
-          cp assets/icon.png AppDir/usr/share/icons/hicolor/512x512/apps/zex.png
+          rsvg-convert -w 512 -h 512 assets/icon.svg -o zex-icon-512.png
+          cp zex-icon-512.png AppDir/usr/share/icons/hicolor/512x512/apps/zex.png
+          cp assets/icon.svg AppDir/usr/share/icons/hicolor/scalable/apps/zex.svg
 
       - name: Download linuxdeploy
         run: |
@@ -86,7 +91,7 @@ jobs:
           ./linuxdeploy.AppImage \
             --appdir AppDir \
             --desktop-file packaging/zex.desktop \
-            --icon-file assets/icon.png \
+            --icon-file zex-icon-512.png \
             --output appimage
 
       - uses: actions/upload-artifact@v4
