@@ -1,7 +1,7 @@
 <img height="80" alt="icon" src="assets/icon.svg" />
 
 # Z-Explorer (zex)
-An extremely fast file explorer and disk usage analyzer companion for Linux, built for the [Zed ecosystem](https://github.com/zed-industries/zed) using the same [GPUI renderer framework](https://www.gpui.rs/). 
+An extremely fast explorer and disk usage analyzer companion for the [Zed ecosystem](https://github.com/zed-industries/zed) using the same [GPUI renderer framework](https://www.gpui.rs/). 
 
 Zex can inherit config, themes, and icon themes from Zed out-of-the-box.
 
