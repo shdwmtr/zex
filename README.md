@@ -56,10 +56,11 @@ $ zex config theme.mode
 ### Boilerplate configuration
 `$XDG_CONFIG_HOME/zex/config.json`
 
-```json
+```jsonc
 {
-    "inherit_from_zed": true,
+    "inherit_from_zed": true, /* $ zex config inherit_from_zed */ 
     "show_hidden_files": true,
+    /* Empty sidebars are not rendered by zex. */ 
     "sidebar": [
         { "name": "Home", "path": "~" },
         "separator",
@@ -73,7 +74,7 @@ $ zex config theme.mode
         },
         "separator",
         { "name": "Local Disk", "path": "/" },
-        { "name": "Trash", "path": ":trash" }
+        { "name": "Trash", "path": ":trash" } /* :trash is a virtual path */
     ],
     "git": {
         "enabled": true
