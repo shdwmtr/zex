@@ -8,54 +8,14 @@ Zex can inherit config, themes, and icon themes from Zed out-of-the-box.
 ### Preview (Zed on left, Zex on right)
 ![](https://github.com/user-attachments/assets/5fb253a2-c27e-4d4c-8b1e-4b364da86564)
 
-## Building from source
-Zex requires the recent 2024 rust compiler toolchain.
-
-```bash
-# Run zexplorer
-$ cargo run
-
-# Build optimized release
-$ cargo build --profile optimized-release
-```
-
 ## Installation
-`make install` builds the optimized release and installs the binary, `.desktop` entry, and icon:
 
-```bash
-$ make build
-$ sudo make install               # installs to /usr/local by default
-$ sudo make PREFIX=/usr install   # or a custom prefix
-```
-
-Arch Linux users can instead build the [PKGBUILD](packaging/PKGBUILD) in `packaging/`:
-
-```bash
-$ cd packaging && makepkg -si
-```
-
-To make Zex the default handler for folders (so it opens from your file manager, "Open With", etc.):
-
-```bash
-$ xdg-mime default zex.desktop inode/directory
-```
-
-Uninstall with `sudo make uninstall` (or `pacman -R zex-git` if installed via the PKGBUILD).
-
-### macOS
-`make app` builds the optimized release and assembles it into a proper `Zex.app` bundle (icon, `Info.plist`, ad-hoc code signature) at `target/macos/Zex.app`:
-
-```bash
-$ make app
-$ open target/macos/Zex.app
-```
-
-`make app-install` additionally copies it to `/Applications`; `make app-uninstall` removes it from there.
+On macOS, Linux, and Windows pre-built binaries of Zex can found on the [releases page](https://github.com/shdwmtr/zex/releases). 
 
 ## Configuration
 Zex reads a JSONC config from `$XDG_CONFIG_HOME/zex/config.json`, falling back to `~/.config/zex/config.json`. Every field is optional, and comments/trailing commas are allowed.
 
-The full field reference lives in the CLI:
+The full field reference lives in the CLI
 
 ```sh
 # list every key, grouped by section
@@ -91,6 +51,25 @@ $ zex config theme.mode
         "enabled": true
     }
 }
+```
+
+## Building from source
+Zex requires the recent 2024 rust compiler toolchain.
+
+```bash
+# Run zexplorer
+$ cargo run
+
+# Build optimized release
+$ cargo build --profile optimized-release
+```
+
+`make install` builds the optimized release and installs the binary, `.desktop` entry, and icon:
+
+```bash
+$ make build
+$ sudo make install               # installs to /usr/local by default
+$ sudo make PREFIX=/usr install   # or a custom prefix
 ```
 
 ## Contributions
