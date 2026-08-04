@@ -6,6 +6,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   # Let any bundled AppImage tooling run without FUSE (GitHub-hosted Linux
@@ -14,16 +18,30 @@ env:
 
 jobs:
   macos:
-    name: macOS (Zex.app)
+    name: macOS (${{ matrix.label }})
     runs-on: macos-14
+    strategy:
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            arch: arm64
+            label: Apple Silicon
+          - target: x86_64-apple-darwin
+            arch: x86_64
+            label: Intel
+    env:
+      CARGO_BUILD_TARGET: ${{ matrix.target }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: ". -> target"
+          key: ${{ matrix.target }}
 
       # Recent Xcode versions split the Metal shader compiler out of the
       # base install; GitHub's macOS runner images normally already carry
@@ -40,12 +58,12 @@ jobs:
       - name: Zip the app bundle
         run: |
           cd target/macos
-          ditto -c -k --sequesterRsrc --keepParent Zex.app Zex-macos.zip
+          ditto -c -k --sequesterRsrc --keepParent Zex.app zex-macos-${{ matrix.arch }}.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Zex-macos
-          path: target/macos/Zex-macos.zip
+          name: zex-macos-${{ matrix.arch }}
+          path: target/macos/zex-macos-${{ matrix.arch }}.zip
 
   linux-appimage:
     name: Linux (AppImage)
@@ -83,21 +101,22 @@ jobs:
 
       - name: Download linuxdeploy
         run: |
-          curl -sSLo linuxdeploy.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-          chmod +x linuxdeploy.AppImage
+          curl -sSLo linuxdeploy https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy
 
       - name: Build AppImage
         run: |
-          ./linuxdeploy.AppImage \
+          ./linuxdeploy \
             --appdir AppDir \
             --desktop-file packaging/zex.desktop \
             --icon-file zex-icon-512.png \
             --output appimage
+          mv Zex-x86_64.AppImage zex-linux-x86_64.AppImage
 
       - uses: actions/upload-artifact@v4
         with:
-          name: zex-linux-appimage
-          path: "*.AppImage"
+          name: zex-linux-x86_64
+          path: zex-linux-x86_64.AppImage
 
   release:
     name: Semantic Release

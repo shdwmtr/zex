@@ -20,8 +20,21 @@
       "@semantic-release/github",
       {
         "assets": [
-          { "path": "dist/Zex-macos/Zex-macos.zip", "label": "Zex-macos.zip" },
-          { "path": "dist/zex-linux-appimage/*.AppImage", "label": "zex-linux-x86_64.AppImage" }
+          {
+            "path": "dist/zex-macos-arm64/zex-macos-arm64.zip",
+            "name": "zex-${nextRelease.version}-darwin-arm64.zip",
+            "label": "macOS (Apple Silicon)"
+          },
+          {
+            "path": "dist/zex-macos-x86_64/zex-macos-x86_64.zip",
+            "name": "zex-${nextRelease.version}-darwin-x86_64.zip",
+            "label": "macOS (Intel)"
+          },
+          {
+            "path": "dist/zex-linux-x86_64/zex-linux-x86_64.AppImage",
+            "name": "zex-${nextRelease.version}-linux-x86_64.AppImage",
+            "label": "Linux (AppImage, x86_64)"
+          }
         ]
       }
     ]

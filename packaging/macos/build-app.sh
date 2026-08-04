@@ -7,14 +7,22 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
 PROFILE="optimized-release"
-BIN="target/$PROFILE/zex"
+if [ -n "${CARGO_BUILD_TARGET:-}" ]; then
+    BIN="target/$CARGO_BUILD_TARGET/$PROFILE/zex"
+else
+    BIN="target/$PROFILE/zex"
+fi
 APP_DIR="target/macos/Zex.app"
 CONTENTS="$APP_DIR/Contents"
 ICON_SRC="assets/icon.svg"
 VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
 
 if [ ! -f "$BIN" ]; then
-    echo "error: $BIN not found; run 'cargo build --profile $PROFILE' first" >&2
+    if [ -n "${CARGO_BUILD_TARGET:-}" ]; then
+        echo "error: $BIN not found; run 'cargo build --profile $PROFILE --target $CARGO_BUILD_TARGET' first" >&2
+    else
+        echo "error: $BIN not found; run 'cargo build --profile $PROFILE' first" >&2
+    fi
     exit 1
 fi
 
