@@ -7,7 +7,6 @@ edition = "2024"
 gpui = "0.2.2"
 trash = "5.2.6"
 futures = "0.3"
-inotify = "0.11"
 libc = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -18,6 +17,7 @@ rustc-hash = "2.1"
 image = "0.25"
 open = "5"
 rust-embed = { version = "8", features = ["include-exclude"] }
+notify = "8.2.0"
 
 [patch.crates-io]
 gpui = { path = "vendor/gpui" }

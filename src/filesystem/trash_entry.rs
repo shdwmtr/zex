@@ -11,6 +11,19 @@ pub struct TrashEntry {
     pub item: trash::TrashItem,
 }
 
+/// macOS has no public API for enumerating Trash contents with metadata
+/// (`trash::os_limited` doesn't exist there); items still land in Trash
+/// fine, they just can't be browsed, restored, or purged from within zex.
+/// See `filesystem::operations::trash` for the matching operation-side gate.
+#[cfg(target_os = "macos")]
+pub fn list_sorted(_show_hidden: bool) -> Result<Vec<TrashEntry>, trash::Error> {
+    Err(trash::Error::Unknown {
+        description: "Browsing Trash isn't supported on macOS; use Finder's Trash instead."
+            .to_string(),
+    })
+}
+
+#[cfg(not(target_os = "macos"))]
 pub fn list_sorted(show_hidden: bool) -> Result<Vec<TrashEntry>, trash::Error> {
     let items = trash::os_limited::list()?;
 

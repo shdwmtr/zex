@@ -31,6 +31,22 @@ pub fn trash_capturing(paths: &[PathBuf]) -> OpResult<Vec<trash::TrashItem>> {
     }
 }
 
+/// macOS has no public API for enumerating, restoring from, or purging
+/// specific items in the Trash (only "move to trash" is supported; see
+/// `trash::os_limited`'s platform gate). Everything below degrades
+/// accordingly: capturing items for undo silently yields nothing (so no undo
+/// entry is recorded), and restore/purge report a clear error instead of
+/// linking against a module that doesn't exist on this platform.
+#[cfg(target_os = "macos")]
+fn unsupported() -> OpError {
+    OpError::Trash(trash::Error::Unknown {
+        description: "Browsing, restoring, and purging Trash items isn't supported on macOS; \
+            use Finder's Trash (deleted items are still moved there normally)."
+            .to_string(),
+    })
+}
+
+#[cfg(not(target_os = "macos"))]
 pub fn capture_trashed_items(paths: &[PathBuf]) -> Result<Vec<trash::TrashItem>, OpError> {
     if paths.is_empty() {
         return Ok(Vec::new());
@@ -50,8 +66,19 @@ pub fn capture_trashed_items(paths: &[PathBuf]) -> Result<Vec<trash::TrashItem>,
     Ok(items)
 }
 
+#[cfg(target_os = "macos")]
+pub fn capture_trashed_items(_paths: &[PathBuf]) -> Result<Vec<trash::TrashItem>, OpError> {
+    Ok(Vec::new())
+}
+
+#[cfg(not(target_os = "macos"))]
 pub fn restore_one(item: trash::TrashItem) -> Result<(), OpError> {
     trash::os_limited::restore_all(std::iter::once(item)).map_err(OpError::Trash)
+}
+
+#[cfg(target_os = "macos")]
+pub fn restore_one(_item: trash::TrashItem) -> Result<(), OpError> {
+    Err(unsupported())
 }
 
 pub fn restore(items: Vec<trash::TrashItem>) -> OpResult<()> {
@@ -66,11 +93,19 @@ pub fn restore(items: Vec<trash::TrashItem>) -> OpResult<()> {
     }
 }
 
+#[cfg(not(target_os = "macos"))]
 pub fn purge_one(item: trash::TrashItem) -> Result<(), OpError> {
     trash::os_limited::purge_all(std::iter::once(item)).map_err(OpError::Trash)
 }
 
-#[cfg(test)]
+#[cfg(target_os = "macos")]
+pub fn purge_one(_item: trash::TrashItem) -> Result<(), OpError> {
+    Err(unsupported())
+}
+
+// Exercises capture/restore/purge via `os_limited`, which doesn't exist on
+// macOS (see `unsupported` above).
+#[cfg(all(test, not(target_os = "macos")))]
 mod tests {
     use super::*;
     use std::fs;

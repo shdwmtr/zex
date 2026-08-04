@@ -1,5 +1,7 @@
 <img height="220" alt="image" align="left" src="https://github.com/user-attachments/assets/df8c2526-dddb-4baa-8173-14f2f7e18e3f" />
 
+[![Build](https://github.com/shdwmtr/zex/actions/workflows/build.yml/badge.svg)](https://github.com/shdwmtr/zex/actions/workflows/build.yml)
+
 ### Z-Explorer (zex)
 An extremely fast file explorer and disk usage analyzer companion for Linux, built for the [Zed ecosystem](https://github.com/zed-industries/zed) using the same [GPUI renderer framework](https://www.gpui.rs/). 
 
@@ -42,6 +44,16 @@ $ xdg-mime default zex.desktop inode/directory
 ```
 
 Uninstall with `sudo make uninstall` (or `pacman -R zex-git` if installed via the PKGBUILD).
+
+### macOS
+`make app` builds the optimized release and assembles it into a proper `Zex.app` bundle (icon, `Info.plist`, ad-hoc code signature) at `target/macos/Zex.app`:
+
+```bash
+$ make app
+$ open target/macos/Zex.app
+```
+
+`make app-install` additionally copies it to `/Applications`; `make app-uninstall` removes it from there.
 
 ## Configuration
 Zex reads a JSONC config from `$XDG_CONFIG_HOME/zex/config.json`, falling back to `~/.config/zex/config.json`. Every field is optional, and comments/trailing commas are allowed.
@@ -86,6 +98,8 @@ $ zex config theme.mode
 
 ## Contributions
 Contributions are welcome; there's plenty of room to help: new features, bug fixes, performance improvements, or just cleaning up rough edges. Open a PR, we'll take a look.
+
+Commits merged to `main` should follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ## License
 

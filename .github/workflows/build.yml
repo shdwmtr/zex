@@ -1,0 +1,130 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  # Let any bundled AppImage tooling run without FUSE (GitHub-hosted Linux
+  # runners don't have it set up for unprivileged mounts).
+  APPIMAGE_EXTRACT_AND_RUN: "1"
+
+jobs:
+  macos:
+    name: macOS (Zex.app)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
+      # Recent Xcode versions split the Metal shader compiler out of the
+      # base install; GitHub's macOS runner images normally already carry
+      # it, but this is a harmless no-op if so and a real fix if not.
+      - name: Ensure the Metal toolchain is installed
+        run: xcodebuild -downloadComponent MetalToolchain || true
+
+      - name: Build Zex.app
+        run: make app
+
+      - name: Zip the app bundle
+        run: |
+          cd target/macos
+          ditto -c -k --sequesterRsrc --keepParent Zex.app Zex-macos.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Zex-macos
+          path: target/macos/Zex-macos.zip
+
+  linux-appimage:
+    name: Linux (AppImage)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential pkg-config \
+            libxcb1-dev libxcb-shape0-dev libxcb-xfixes0-dev \
+            libxkbcommon-dev libxkbcommon-x11-dev \
+            libwayland-dev libfontconfig1-dev libvulkan-dev
+
+      - name: Build
+        run: cargo build --profile optimized-release
+
+      - name: Assemble AppDir
+        run: |
+          set -eu
+          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/512x512/apps
+          cp target/optimized-release/zex AppDir/usr/bin/zex
+          cp packaging/zex.desktop AppDir/usr/share/applications/zex.desktop
+          cp assets/icon.png AppDir/usr/share/icons/hicolor/512x512/apps/zex.png
+
+      - name: Download linuxdeploy
+        run: |
+          curl -sSLo linuxdeploy.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy.AppImage
+
+      - name: Build AppImage
+        run: |
+          ./linuxdeploy.AppImage \
+            --appdir AppDir \
+            --desktop-file packaging/zex.desktop \
+            --icon-file assets/icon.png \
+            --output appimage
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zex-linux-appimage
+          path: "*.AppImage"
+
+  release:
+    name: Semantic Release
+    needs: [macos, linux-appimage]
+    # Only main gets to cut releases; PRs and other branches just build.
+    # semantic-release itself decides, from Conventional Commits since the
+    # last release, whether *this* push actually warrants a new version -
+    # a run with only e.g. docs/chore commits publishes nothing.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # semantic-release needs full history + tags to figure out what
+          # changed since the last release.
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Semantic Release
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          extra_plugins: |
+            @semantic-release/exec
+            @semantic-release/git
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

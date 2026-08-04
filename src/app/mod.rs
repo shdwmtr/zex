@@ -47,6 +47,12 @@ pub fn run(settings: Settings, startup: Startup) {
                     .unwrap_or(default_font.font_size),
             });
 
+            // macOS apps don't quit when their last window closes by default
+            // (they idle in the Dock/menu bar instead, per platform
+            // convention). Zex is single-window, so mirror the Linux
+            // behavior: closing the window ends the app.
+            cx.on_window_closed(|cx| cx.quit()).detach();
+
             let bounds = Bounds::centered(None, size(px(1000.0), px(650.0)), cx);
             cx.open_window(
                 WindowOptions {

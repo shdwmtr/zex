@@ -1,68 +1,40 @@
-use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
-use std::sync::Arc;
-use std::thread;
 use std::time::Duration;
 
 use gpui::Context;
-use inotify::{Inotify, WatchMask};
+use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 
 use crate::filesystem::entry::{self, FsEntry};
 
 use super::{Explorer, TRASH_VIRTUAL_PATH};
 
-const WATCH_MASK: WatchMask = WatchMask::ATTRIB
-    .union(WatchMask::CREATE)
-    .union(WatchMask::DELETE)
-    .union(WatchMask::CLOSE_WRITE)
-    .union(WatchMask::MODIFY)
-    .union(WatchMask::MOVED_FROM)
-    .union(WatchMask::MOVED_TO)
-    .union(WatchMask::DELETE_SELF)
-    .union(WatchMask::MOVE_SELF);
-
-/// Watches a single directory (non-recursively) for changes, polling the
-/// non-blocking inotify fd on a background thread since we only care whether
-/// *something* changed, not what.
+/// Watches a single directory (non-recursively) for changes, forwarding a
+/// unit signal whenever *something* changed; we don't care what. Backed by
+/// `notify`, which uses inotify on Linux and FSEvents on macOS.
 pub(super) struct DirWatcher {
-    stop: Arc<AtomicBool>,
+    _watcher: RecommendedWatcher,
 }
 
 impl DirWatcher {
-    fn spawn(dir: &Path) -> io::Result<(Self, mpsc::Receiver<()>)> {
-        let mut inotify = Inotify::init()?;
-        inotify.watches().add(dir, WATCH_MASK)?;
-
+    fn spawn(dir: &Path) -> notify::Result<(Self, mpsc::Receiver<()>)> {
         let (tx, rx) = mpsc::channel();
-        let stop = Arc::new(AtomicBool::new(false));
-        let thread_stop = stop.clone();
 
-        thread::spawn(move || {
-            let mut buffer = [0u8; 4096];
-            while !thread_stop.load(Ordering::Relaxed) {
-                match inotify.read_events(&mut buffer) {
-                    Ok(events) => {
-                        if events.count() > 0 && tx.send(()).is_err() {
-                            break;
-                        }
-                    }
-                    Err(err) if err.kind() == io::ErrorKind::WouldBlock => {
-                        thread::sleep(Duration::from_millis(200));
-                    }
-                    Err(_) => break,
-                }
+        let mut watcher = notify::recommended_watcher(move |res: notify::Result<Event>| {
+            if let Ok(event) = res
+                && !matches!(event.kind, EventKind::Access(_) | EventKind::Other)
+            {
+                let _ = tx.send(());
             }
-        });
+        })?;
+        watcher.watch(dir, RecursiveMode::NonRecursive)?;
 
-        Ok((Self { stop }, rx))
-    }
-}
-
-impl Drop for DirWatcher {
-    fn drop(&mut self) {
-        self.stop.store(true, Ordering::Relaxed);
+        Ok((
+            Self {
+                _watcher: watcher,
+            },
+            rx,
+        ))
     }
 }
 

@@ -10,10 +10,23 @@ bindir := $(DESTDIR)$(PREFIX)/bin
 desktopdir := $(DESTDIR)$(PREFIX)/share/applications
 pixmapdir := $(DESTDIR)$(PREFIX)/share/pixmaps
 
-.PHONY: build install uninstall
+APP_DIR := target/macos/Zex.app
+
+.PHONY: build install uninstall app app-install app-uninstall
 
 build:
 	cargo build --profile $(CARGO_PROFILE)
+
+# macOS: assemble target/optimized-release/zex into a proper Zex.app bundle.
+app: build
+	./packaging/macos/build-app.sh
+
+app-install: app
+	rm -rf "/Applications/Zex.app"
+	cp -R "$(APP_DIR)" "/Applications/Zex.app"
+
+app-uninstall:
+	rm -rf "/Applications/Zex.app"
 
 install:
 	@test -f $(TARGET_BIN) || { echo "error: $(TARGET_BIN) not found; run 'make build' first (without sudo)"; exit 1; }
