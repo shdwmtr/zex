@@ -3,9 +3,13 @@
 # Z-Explorer (zex)
 An extremely fast explorer and disk usage analyzer companion for the [Zed ecosystem](https://github.com/zed-industries/zed) using the same [GPUI renderer framework](https://www.gpui.rs/). 
 
-Zex can inherit config, themes, and icon themes from Zed out-of-the-box.
+Zex can inherit config, themes, and icon themes from Zed out-of-the-box. 
+It's not a reimplementation of Zed's renderer, it's an identical subset of the source tree, stripped down to just a few MB.
 
-### Preview (Zed on left, Zex on right)
+### Left: Zed, Right: Zex
+
+Kinda hard to tell which is which, isn't it? Zex prides itself in its first-class integration into Zed's ecosystem. 
+
 ![](https://github.com/user-attachments/assets/cfb421d0-2fbb-4c20-8302-95d4346c6c5f)
 
 ## Installation
