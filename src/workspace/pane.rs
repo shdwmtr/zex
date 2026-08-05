@@ -10,6 +10,7 @@ use crate::explorer::{Explorer, item_label};
 use crate::settings::{DiskUsageSettings, GitSettings};
 use crate::theme;
 use crate::ui::path_bar::{self, NavDirection};
+use crate::ui::popup_menu::{ContextMenuExt, PopupMenu, PopupMenuItem};
 
 use super::tab_drag::{TabDragGhost, TabDragPayload};
 
@@ -44,6 +45,79 @@ fn tab_label(explorer: &Explorer) -> SharedString {
         return item_label(&state.current_root);
     }
     item_label(explorer.current_dir())
+}
+
+fn tab_path(explorer: &Explorer) -> Option<PathBuf> {
+    if explorer.is_trash() {
+        return None;
+    }
+    if let Some(state) = &explorer.disk_usage {
+        return Some(state.current_root.clone());
+    }
+    Some(explorer.current_dir().to_path_buf())
+}
+
+fn tab_context_menu(
+    pane: Entity<Pane>,
+    tab: Entity<Explorer>,
+    index: usize,
+    is_first: bool,
+    is_last: bool,
+    menu: PopupMenu,
+    _window: &mut Window,
+    cx: &mut Context<PopupMenu>,
+) -> PopupMenu {
+    let close_pane = pane.clone();
+    let close_others_pane = pane.clone();
+    let close_left_pane = pane.clone();
+    let close_right_pane = pane.clone();
+    let close_all_pane = pane.clone();
+    let copy_path_tab = tab.clone();
+    let can_copy_path = tab_path(tab.read(cx)).is_some();
+
+    menu.item(
+        PopupMenuItem::new("Close").on_click(move |_, _window, cx| {
+            close_pane.update(cx, |pane, cx| pane.close_tab(index, cx));
+        }),
+    )
+    .item(
+        PopupMenuItem::new("Close Others")
+            .disabled(is_first && is_last)
+            .on_click(move |_, _window, cx| {
+                close_others_pane.update(cx, |pane, cx| pane.close_other_tabs(index, cx));
+            }),
+    )
+    .item(
+        PopupMenuItem::new("Close Left")
+            .disabled(is_first)
+            .on_click(move |_, _window, cx| {
+                close_left_pane.update(cx, |pane, cx| pane.close_tabs_to_left(index, cx));
+            }),
+    )
+    .item(
+        PopupMenuItem::new("Close Right")
+            .disabled(is_last)
+            .on_click(move |_, _window, cx| {
+                close_right_pane.update(cx, |pane, cx| pane.close_tabs_to_right(index, cx));
+            }),
+    )
+    .item(
+        PopupMenuItem::new("Close All").on_click(move |_, _window, cx| {
+            close_all_pane.update(cx, |pane, cx| pane.close_all_tabs(cx));
+        }),
+    )
+    .separator()
+    .item(
+        PopupMenuItem::new("Copy Path")
+            .disabled(!can_copy_path)
+            .on_click(move |_, _window, cx| {
+                copy_path_tab.update(cx, |explorer, cx| {
+                    if let Some(path) = tab_path(explorer) {
+                        explorer.copy_paths_to_clipboard(&[path], cx);
+                    }
+                });
+            }),
+    )
 }
 
 impl Pane {
@@ -165,6 +239,52 @@ impl Pane {
         self.close_tab(self.active_index, cx);
     }
 
+    pub fn close_other_tabs(&mut self, index: usize, cx: &mut Context<Self>) {
+        if index >= self.tabs.len() || self.tabs.len() <= 1 {
+            return;
+        }
+        let keep = self.tabs.remove(index);
+        self.tabs.clear();
+        self.tabs.push(keep);
+        self.active_index = 0;
+        cx.notify();
+    }
+
+    pub fn close_tabs_to_left(&mut self, index: usize, cx: &mut Context<Self>) {
+        if index == 0 || index >= self.tabs.len() {
+            return;
+        }
+        let active_id = self.tabs[self.active_index].entity_id();
+        self.tabs.drain(0..index);
+        self.active_index = self
+            .tabs
+            .iter()
+            .position(|tab| tab.entity_id() == active_id)
+            .unwrap_or(0);
+        cx.notify();
+    }
+
+    pub fn close_tabs_to_right(&mut self, index: usize, cx: &mut Context<Self>) {
+        if index + 1 >= self.tabs.len() {
+            return;
+        }
+        let active_id = self.tabs[self.active_index].entity_id();
+        self.tabs.truncate(index + 1);
+        self.active_index = self
+            .tabs
+            .iter()
+            .position(|tab| tab.entity_id() == active_id)
+            .unwrap_or(self.tabs.len() - 1);
+        cx.notify();
+    }
+
+    /// Closes every tab in this pane. Mirrors `close_tab`'s handling of the last remaining
+    /// tab: the pane doesn't touch its own state and instead defers to the workspace, which
+    /// removes the pane outright or vetoes the close if it's the only pane left.
+    pub fn close_all_tabs(&mut self, cx: &mut Context<Self>) {
+        cx.emit(PaneEvent::Empty);
+    }
+
     pub fn activate(&mut self, index: usize, cx: &mut Context<Self>) {
         if index < self.tabs.len() && index != self.active_index {
             self.active_index = index;
@@ -205,10 +325,13 @@ impl Pane {
 
     fn render_tab(&self, index: usize, tab: &Entity<Explorer>, cx: &Context<Self>) -> AnyElement {
         let is_active = index == self.active_index;
+        let is_first = index == 0;
         let is_last = index == self.tabs.len() - 1;
         let label = tab_label(tab.read(cx));
         let ghost_label = label.clone();
         let self_pane = cx.entity();
+        let menu_pane = self_pane.clone();
+        let menu_tab = tab.clone();
 
         div()
             .id(("tab", index))
@@ -220,7 +343,7 @@ impl Pane {
             .items_center()
             .gap_1()
             .px_2()
-            .max_w(px(200.0))
+            .max_w(px(280.0))
             .border_l_1()
             .when(is_last, |el| el.border_r_1())
             .border_color(theme::border())
@@ -237,6 +360,18 @@ impl Pane {
             )
             .drag_over::<TabDragPayload>(|style, _dragged, _window, _cx| {
                 style.border_color(theme::drop_target_border())
+            })
+            .context_menu(move |menu, window, cx| {
+                tab_context_menu(
+                    menu_pane.clone(),
+                    menu_tab.clone(),
+                    index,
+                    is_first,
+                    is_last,
+                    menu,
+                    window,
+                    cx,
+                )
             })
             .on_drop::<TabDragPayload>(cx.listener(
                 move |pane, dragged: &TabDragPayload, _window, cx| {
@@ -256,7 +391,8 @@ impl Pane {
             .child(
                 div()
                     .flex_1()
-                    .overflow_hidden()
+                    .min_w(px(0.0))
+                    .truncate()
                     .text_center()
                     .text_base()
                     .text_color(theme::text_primary())
