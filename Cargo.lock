@@ -7323,7 +7323,7 @@ dependencies = [
 
 [[package]]
 name = "zex"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "chrono",
  "futures",
