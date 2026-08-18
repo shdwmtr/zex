@@ -7,7 +7,7 @@ use gpui::{
 
 use crate::explorer::shared_state::SharedState;
 use crate::explorer::{Explorer, item_label};
-use crate::settings::{DiskUsageSettings, GitSettings};
+use crate::settings::{DiskUsageSettings, GitSettings, SearchSettings};
 use crate::theme;
 use crate::ui::path_bar::{self, NavDirection};
 use crate::ui::popup_menu::{ContextMenuExt, PopupMenu, PopupMenuItem};
@@ -32,6 +32,7 @@ pub struct Pane {
     pub show_tab_strip: bool,
     git_settings: GitSettings,
     disk_usage_settings: DiskUsageSettings,
+    search_settings: SearchSettings,
     shared: Entity<SharedState>,
 }
 
@@ -40,6 +41,9 @@ impl EventEmitter<PaneEvent> for Pane {}
 fn tab_label(explorer: &Explorer) -> SharedString {
     if explorer.is_trash() {
         return "Trash".into();
+    }
+    if let Some(state) = &explorer.search {
+        return format!("Search: {}", item_label(&state.root)).into();
     }
     if let Some(state) = &explorer.disk_usage {
         return item_label(&state.current_root);
@@ -50,6 +54,9 @@ fn tab_label(explorer: &Explorer) -> SharedString {
 fn tab_path(explorer: &Explorer) -> Option<PathBuf> {
     if explorer.is_trash() {
         return None;
+    }
+    if let Some(state) = &explorer.search {
+        return Some(state.root.clone());
     }
     if let Some(state) = &explorer.disk_usage {
         return Some(state.current_root.clone());
@@ -125,6 +132,7 @@ impl Pane {
         explorer: Entity<Explorer>,
         git_settings: GitSettings,
         disk_usage_settings: DiskUsageSettings,
+        search_settings: SearchSettings,
         shared: Entity<SharedState>,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -139,6 +147,7 @@ impl Pane {
             show_tab_strip: false,
             git_settings,
             disk_usage_settings,
+            search_settings,
             shared,
         }
     }
@@ -180,9 +189,37 @@ impl Pane {
                 show_hidden,
                 self.git_settings.clone(),
                 self.disk_usage_settings.clone(),
+                self.search_settings.clone(),
                 self.shared.clone(),
             )
         });
+        self.claim(&explorer, cx);
+        self.tabs.push(explorer);
+        self.active_index = self.tabs.len() - 1;
+        cx.notify();
+    }
+
+    pub fn spawn_search_tab(
+        &mut self,
+        dir: PathBuf,
+        show_hidden: bool,
+        origin: Entity<Explorer>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let explorer = cx.new(|cx| {
+            Explorer::new_tab(
+                window,
+                cx,
+                dir,
+                show_hidden,
+                self.git_settings.clone(),
+                self.disk_usage_settings.clone(),
+                self.search_settings.clone(),
+                self.shared.clone(),
+            )
+        });
+        explorer.update(cx, |explorer, cx| explorer.begin_search(origin, window, cx));
         self.claim(&explorer, cx);
         self.tabs.push(explorer);
         self.active_index = self.tabs.len() - 1;

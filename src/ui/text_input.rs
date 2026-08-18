@@ -1,10 +1,11 @@
 use std::ops::Range;
+use std::time::Duration;
 
 use gpui::{
     App, Bounds, ClipboardItem, Context, CursorStyle, DispatchPhase, ElementInputHandler, Entity,
     EntityInputHandler, EventEmitter, FocusHandle, HitboxBehavior, Hsla, InteractiveElement,
     IntoElement, KeyBinding, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
-    ParentElement, Pixels, Point, RenderOnce, SharedString, Styled, TextRun, UTF16Selection,
+    ParentElement, Pixels, Point, RenderOnce, SharedString, Styled, Task, TextRun, UTF16Selection,
     Window, actions, canvas, div, fill, point, size,
 };
 
@@ -122,6 +123,8 @@ fn char_kind(c: char) -> CharKind {
     }
 }
 
+const CURSOR_BLINK_INTERVAL: Duration = Duration::from_millis(530);
+
 pub struct TextInputState {
     content: String,
     selected_range: Range<usize>,
@@ -131,6 +134,8 @@ pub struct TextInputState {
     focus_handle: FocusHandle,
     marked_range: Option<Range<usize>>,
     last_bounds: Option<Bounds<Pixels>>,
+    blink_visible: bool,
+    blink_task: Option<Task<()>>,
 }
 
 impl TextInputState {
@@ -144,6 +149,8 @@ impl TextInputState {
             focus_handle: cx.focus_handle(),
             marked_range: None,
             last_bounds: None,
+            blink_visible: true,
+            blink_task: None,
         }
     }
 
@@ -159,8 +166,23 @@ impl TextInputState {
         self
     }
 
-    pub fn focus(&self, window: &mut Window, _cx: &mut Context<Self>) {
+    pub fn focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         window.focus(&self.focus_handle);
+        self.blink_visible = true;
+        self.blink_task = Some(cx.spawn(async move |weak, cx| {
+            loop {
+                cx.background_executor().timer(CURSOR_BLINK_INTERVAL).await;
+                let alive = weak
+                    .update(cx, |state, cx| {
+                        state.blink_visible = !state.blink_visible;
+                        cx.notify();
+                    })
+                    .is_ok();
+                if !alive {
+                    break;
+                }
+            }
+        }));
     }
 
     pub fn value(&self) -> SharedString {
@@ -581,6 +603,7 @@ impl RenderOnce for TextInput {
         let selection_reversed = snapshot.selection_reversed;
         let placeholder = snapshot.placeholder.clone();
         let focus_handle = snapshot.focus_handle.clone();
+        let blink_visible = snapshot.blink_visible;
 
         let is_focused = focus_handle.is_focused(window);
         let text_style = window.text_style();
@@ -760,7 +783,7 @@ impl RenderOnce for TextInput {
                                 ),
                                 theme::text_selection_fill(),
                             ));
-                        } else if is_focused && !show_placeholder {
+                        } else if is_focused && blink_visible {
                             window.paint_quad(fill(
                                 Bounds::new(
                                     point(bounds.origin.x + cursor_x, bounds.origin.y),

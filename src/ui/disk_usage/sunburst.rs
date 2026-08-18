@@ -2,9 +2,9 @@ use std::f32::consts::PI;
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, BoxShadow, Bounds, ClickEvent, Context, DispatchPhase, FontWeight,
-    InteractiveElement, IntoElement, MouseMoveEvent, ParentElement, Path, PathBuilder, Pixels,
-    Point, Styled, Window, canvas, div, point, prelude::*, px,
+    AnyElement, Bounds, ClickEvent, Context, DispatchPhase, FontWeight, InteractiveElement,
+    IntoElement, MouseMoveEvent, ParentElement, Path, PathBuilder, Pixels, Point, Styled, Window,
+    canvas, div, point, prelude::*, px,
 };
 
 use crate::explorer::Explorer;
@@ -105,12 +105,7 @@ fn tooltip(tree: &DiskUsageTree, state: &crate::explorer::disk_usage::DiskUsageS
             .bg(theme::bg_panel())
             .border_1()
             .border_color(theme::border())
-            .shadow(vec![BoxShadow {
-                color: gpui::Hsla { h: 0., s: 0., l: 0., a: 0.4 },
-                blur_radius: px(12.0),
-                spread_radius: px(0.),
-                offset: Point::new(px(0.0), px(2.0)),
-            }])
+            .shadow(theme::elevated_shadow())
             .child(div().font_weight(FontWeight::BOLD).truncate().child(name))
             .child(
                 div()

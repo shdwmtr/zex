@@ -19,6 +19,7 @@ pub fn run(settings: Settings, startup: Startup) {
     let sidebar_entries = settings.sidebar.clone();
     let git_settings = settings.git.clone();
     let disk_usage_settings = settings.disk_usage.clone();
+    let search_settings = settings.search.clone();
 
     Application::new()
         .with_assets(assets::Assets::new())
@@ -71,6 +72,7 @@ pub fn run(settings: Settings, startup: Startup) {
                             sidebar_entries,
                             git_settings,
                             disk_usage_settings,
+                            search_settings,
                             shared,
                             startup,
                         )

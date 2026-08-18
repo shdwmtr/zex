@@ -7,6 +7,7 @@ pub mod path_bar;
 pub mod popup_menu;
 pub mod properties_window;
 pub mod scrollbar;
+pub mod search_panel;
 pub mod sidebar;
 pub mod status_bar;
 pub mod text_input;

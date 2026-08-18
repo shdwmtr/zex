@@ -216,6 +216,83 @@ pub(crate) fn file_row_menu(
     )
 }
 
+pub fn search_result_menu(
+    explorer: Entity<Explorer>,
+    path: PathBuf,
+    reveal_index: Option<usize>,
+    menu: PopupMenu,
+    _window: &mut Window,
+    cx: &mut Context<PopupMenu>,
+) -> PopupMenu {
+    explorer.update(cx, |explorer, cx| {
+        explorer.selected = std::iter::once(path.clone()).collect();
+        cx.notify();
+    });
+
+    let open_explorer = explorer.clone();
+    let open_path = path.clone();
+    let reveal_explorer = explorer.clone();
+    let reveal_path_target = path.clone();
+    let copy_explorer = explorer.clone();
+    let cut_explorer = explorer.clone();
+    let copy_path_explorer = explorer.clone();
+    let copy_path_target = path.clone();
+    let delete_explorer = explorer.clone();
+    let properties_explorer = explorer.clone();
+    let properties_path = path;
+
+    menu.item(
+        PopupMenuItem::new("Open").on_click(move |_, _window, cx| {
+            open_explorer.update(cx, |explorer, cx| {
+                if let Err(err) = open::that_detached(&open_path) {
+                    explorer.op_error = Some(format!("Couldn't open {}: {err}", open_path.display()));
+                    cx.notify();
+                }
+            });
+        }),
+    )
+    .item(
+        PopupMenuItem::new("Reveal in Explorer").on_click(move |_, window, cx| {
+            reveal_explorer.update(cx, |explorer, cx| match reveal_index {
+                Some(ix) => explorer.reveal_result(ix, window, cx),
+                None => explorer.reveal_path(reveal_path_target.clone(), window, cx),
+            });
+        }),
+    )
+    .separator()
+    .item(
+        PopupMenuItem::new("Copy").on_click(move |_, _window, cx| {
+            copy_explorer.update(cx, |explorer, cx| explorer.copy_selection(cx));
+        }),
+    )
+    .item(
+        PopupMenuItem::new("Cut").on_click(move |_, _window, cx| {
+            cut_explorer.update(cx, |explorer, cx| explorer.cut_selection(cx));
+        }),
+    )
+    .item(
+        PopupMenuItem::new("Copy Path").on_click(move |_, _window, cx| {
+            copy_path_explorer.update(cx, |explorer, cx| {
+                explorer.copy_paths_to_clipboard(std::slice::from_ref(&copy_path_target), cx);
+            });
+        }),
+    )
+    .separator()
+    .item(
+        PopupMenuItem::new("Delete").on_click(move |_, _window, cx| {
+            delete_explorer.update(cx, |explorer, cx| explorer.delete_selection(cx));
+        }),
+    )
+    .separator()
+    .item(
+        PopupMenuItem::new("Properties").on_click(move |_, window, cx| {
+            properties_explorer.update(cx, |explorer, cx| {
+                explorer.open_properties(vec![properties_path.clone()], window, cx);
+            });
+        }),
+    )
+}
+
 pub fn disk_usage_row_menu(
     explorer: Entity<Explorer>,
     path: PathBuf,

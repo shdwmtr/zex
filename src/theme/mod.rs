@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 
-use gpui::{FontWeight, Global, Hsla, Pixels, Rgba, SharedString, px, rgb};
+use gpui::{BoxShadow, FontWeight, Global, Hsla, Pixels, Rgba, SharedString, point, px, rgb, rgba};
 
 pub mod color_theme;
 pub mod icon_theme;
@@ -202,6 +202,15 @@ pub fn box_select_fill() -> Hsla {
 
 pub fn box_select_border() -> Rgba {
     rgb(0x8ab4f8)
+}
+
+pub fn elevated_shadow() -> Vec<BoxShadow> {
+    vec![BoxShadow {
+        color: rgba(0x151515d1).into(),
+        offset: point(px(0.), px(6.)),
+        blur_radius: px(5.),
+        spread_radius: px(-3.),
+    }]
 }
 
 pub fn drop_target_fill() -> Hsla {

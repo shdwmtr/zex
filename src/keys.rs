@@ -27,6 +27,7 @@ actions!(
         CloseTab,
         NextTab,
         PrevTab,
+        OpenSearch,
     ]
 );
 
@@ -39,6 +40,7 @@ pub fn init(cx: &mut App) {
         KeyBinding::new("ctrl-w", CloseTab, Some("Workspace")),
         KeyBinding::new("ctrl-tab", NextTab, Some("Workspace")),
         KeyBinding::new("ctrl-shift-tab", PrevTab, Some("Workspace")),
+        KeyBinding::new("ctrl-f", OpenSearch, Some("Explorer")),
         KeyBinding::new("f2", Rename, Some("Explorer")),
         KeyBinding::new("delete", Delete, Some("Explorer")),
         KeyBinding::new("ctrl-c", Copy, Some("Explorer")),

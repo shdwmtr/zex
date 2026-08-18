@@ -225,7 +225,7 @@ impl Render for PopupMenu {
             .bg(theme::bg_elevated())
             .border(px(1.0 / window.scale_factor()))
             .border_color(theme::border_variant())
-            .shadow_lg()
+            .shadow(theme::elevated_shadow())
             .children(
                 self.items
                     .iter()

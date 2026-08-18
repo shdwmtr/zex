@@ -18,6 +18,8 @@ pub struct Settings {
     #[serde(default)]
     pub disk_usage: DiskUsageSettings,
     #[serde(default)]
+    pub search: SearchSettings,
+    #[serde(default)]
     pub theme: ThemeSettings,
 }
 
@@ -137,6 +139,53 @@ impl Default for GitCliSettings {
 pub struct DiskUsageSettings {
     pub cross_filesystem_boundaries: bool,
     pub follow_symlinks: bool,
+}
+
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+#[serde(default)]
+pub struct SearchSettings {
+    pub cli: SearchCliSettings,
+    pub max_results: u32,
+    pub default_case: CaseSensitivity,
+    pub respect_gitignore: bool,
+    pub include_hidden: bool,
+}
+
+impl Default for SearchSettings {
+    fn default() -> Self {
+        Self {
+            cli: SearchCliSettings::default(),
+            max_results: 500,
+            default_case: CaseSensitivity::Smart,
+            respect_gitignore: true,
+            include_hidden: false,
+        }
+    }
+}
+
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+#[serde(default)]
+pub struct SearchCliSettings {
+    pub binary_path: Option<String>,
+    pub timeout_ms: u64,
+}
+
+impl Default for SearchCliSettings {
+    fn default() -> Self {
+        Self {
+            binary_path: None,
+            timeout_ms: 5000,
+        }
+    }
+}
+
+#[derive(Deserialize, Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CaseSensitivity {
+    Sensitive,
+    Insensitive,
+    #[default]
+    Smart,
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]

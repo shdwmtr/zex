@@ -1,8 +1,4 @@
-use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use std::sync::mpsc;
-use std::time::{Duration, Instant};
 
 use rustc_hash::FxHashMap;
 
@@ -88,43 +84,9 @@ fn find_repo_root(dir: &Path) -> Option<PathBuf> {
 
 fn run_git(dir: &Path, cli: &GitCliSettings, args: &[&str]) -> Option<Vec<u8>> {
     let binary = cli.binary_path.as_deref().unwrap_or("git");
-
-    let mut child = Command::new(binary)
-        .arg("-C")
-        .arg(dir)
-        .args(args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .ok()?;
-
-    let mut stdout = child.stdout.take()?;
-    let (tx, rx) = mpsc::channel();
-    std::thread::spawn(move || {
-        let mut buf = Vec::new();
-        let _ = stdout.read_to_end(&mut buf);
-        let _ = tx.send(buf);
-    });
-
-    let deadline = Instant::now() + Duration::from_millis(cli.timeout_ms.max(1));
-    loop {
-        match child.try_wait() {
-            Ok(Some(exit_status)) => {
-                let buf = rx.recv_timeout(Duration::from_millis(500)).unwrap_or_default();
-                return exit_status.success().then_some(buf);
-            }
-            Ok(None) => {
-                if Instant::now() >= deadline {
-                    let _ = child.kill();
-                    let _ = child.wait();
-                    return None;
-                }
-                std::thread::sleep(Duration::from_millis(20));
-            }
-            Err(_) => return None,
-        }
-    }
+    let cancel = std::sync::atomic::AtomicBool::new(false);
+    let output = crate::process::run_with_timeout(binary, dir, args, None, cli.timeout_ms, &cancel)?;
+    (output.status_code == Some(0)).then_some(output.stdout)
 }
 
 fn parse_porcelain(dir: &Path, output: &[u8]) -> Option<GitSnapshot> {

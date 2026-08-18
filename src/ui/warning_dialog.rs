@@ -41,7 +41,7 @@ pub fn render(explorer: &Explorer, cx: &Context<Explorer>) -> Option<impl IntoEl
                     .bg(theme::bg_elevated())
                     .border_1()
                     .border_color(theme::border())
-                    .shadow_lg()
+                    .shadow(theme::elevated_shadow())
                     .child(
                         div()
                             .font_weight(FontWeight::BOLD)

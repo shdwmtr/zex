@@ -13,6 +13,7 @@ pub enum ScrollbarId {
     FileList,
     Sidebar,
     DiskUsageTree,
+    SearchResults,
 }
 
 #[derive(Clone, Copy, Debug)]

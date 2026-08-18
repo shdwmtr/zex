@@ -34,7 +34,7 @@ impl Render for Tooltip {
             .border_1()
             .border_color(theme::border_variant())
             .rounded_lg()
-            .shadow_lg()
+            .shadow(theme::elevated_shadow())
             .text_base()
             .text_color(theme::text_primary())
             .child(self.text.clone())

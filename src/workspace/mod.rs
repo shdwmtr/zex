@@ -14,7 +14,7 @@ use crate::explorer::Explorer;
 use crate::explorer::drag::{ScrollDragHost, ScrollbarDrag, ScrollbarId, WidthResizeDrag};
 use crate::explorer::shared_state::SharedState;
 use crate::keys;
-use crate::settings::{DiskUsageSettings, GitSettings, SidebarItem};
+use crate::settings::{DiskUsageSettings, GitSettings, SearchSettings, SidebarItem};
 use crate::theme;
 use crate::ui::sidebar;
 
@@ -47,6 +47,7 @@ pub struct Workspace {
     split_resize: Option<SplitResizeState>,
     git_settings: GitSettings,
     disk_usage_settings: DiskUsageSettings,
+    search_settings: SearchSettings,
     shared: Entity<SharedState>,
     pane_subscriptions: Vec<Subscription>,
 }
@@ -61,6 +62,7 @@ impl Workspace {
         sidebar_entries: Vec<SidebarItem>,
         git_settings: GitSettings,
         disk_usage_settings: DiskUsageSettings,
+        search_settings: SearchSettings,
         shared: Entity<SharedState>,
         startup: Startup,
     ) -> Self {
@@ -71,6 +73,7 @@ impl Workspace {
                 show_hidden,
                 git_settings.clone(),
                 disk_usage_settings.clone(),
+                search_settings.clone(),
                 shared.clone(),
                 startup,
             )
@@ -80,6 +83,7 @@ impl Workspace {
                 explorer,
                 git_settings.clone(),
                 disk_usage_settings.clone(),
+                search_settings.clone(),
                 shared.clone(),
                 cx,
             )
@@ -91,6 +95,7 @@ impl Workspace {
             sidebar_entries,
             git_settings,
             disk_usage_settings,
+            search_settings,
             shared,
             cx,
         )
@@ -105,6 +110,7 @@ impl Workspace {
         sidebar_entries: Vec<SidebarItem>,
         git_settings: GitSettings,
         disk_usage_settings: DiskUsageSettings,
+        search_settings: SearchSettings,
         shared: Entity<SharedState>,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -121,6 +127,7 @@ impl Workspace {
             split_resize: None,
             git_settings,
             disk_usage_settings,
+            search_settings,
             shared,
             pane_subscriptions: Vec::new(),
         };
@@ -206,6 +213,7 @@ impl Workspace {
                         explorer,
                         self.git_settings.clone(),
                         self.disk_usage_settings.clone(),
+                        self.search_settings.clone(),
                         self.shared.clone(),
                         cx,
                     )
@@ -249,6 +257,7 @@ impl Workspace {
         let sidebar_entries = self.sidebar_entries.clone();
         let git_settings = self.git_settings.clone();
         let disk_usage_settings = self.disk_usage_settings.clone();
+        let search_settings = self.search_settings.clone();
         let shared = self.shared.clone();
 
         let bounds = Bounds::new(screen_position, size(px(1000.0), px(650.0)));
@@ -265,6 +274,7 @@ impl Workspace {
                         explorer,
                         git_settings.clone(),
                         disk_usage_settings.clone(),
+                        search_settings.clone(),
                         shared.clone(),
                         cx,
                     )
@@ -276,6 +286,7 @@ impl Workspace {
                         sidebar_entries,
                         git_settings,
                         disk_usage_settings,
+                        search_settings,
                         shared,
                         cx,
                     )

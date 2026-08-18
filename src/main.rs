@@ -5,6 +5,8 @@ mod explorer;
 mod filesystem;
 mod git;
 mod keys;
+mod process;
+mod search;
 mod settings;
 mod theme;
 mod ui;

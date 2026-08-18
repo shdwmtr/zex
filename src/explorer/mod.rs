@@ -10,6 +10,7 @@ mod new_entry;
 mod path_edit;
 pub mod properties;
 mod rename;
+pub mod search;
 mod selection;
 pub mod shared_state;
 mod trash_ops;
@@ -29,7 +30,7 @@ use crate::filesystem::entry::FsEntry;
 use crate::filesystem::trash_entry::TrashEntry;
 use crate::git::GitSnapshot;
 use crate::keys;
-use crate::settings::{DiskUsageSettings, GitSettings};
+use crate::settings::{DiskUsageSettings, GitSettings, SearchSettings};
 use crate::theme;
 use crate::ui;
 use crate::ui::{bulk_progress, file_list, path_bar, status_bar, warning_dialog};
@@ -112,6 +113,8 @@ pub struct Explorer {
     git_poll_task: Option<Task<()>>,
     pub disk_usage_settings: DiskUsageSettings,
     pub disk_usage: Option<disk_usage::DiskUsageState>,
+    pub search_settings: SearchSettings,
+    pub search: Option<search::SearchState>,
 }
 
 impl Explorer {
@@ -122,6 +125,7 @@ impl Explorer {
         show_hidden: bool,
         git_settings: GitSettings,
         disk_usage_settings: DiskUsageSettings,
+        search_settings: SearchSettings,
         shared: Entity<shared_state::SharedState>,
     ) -> Self {
         let focus_handle = cx.focus_handle();
@@ -166,6 +170,8 @@ impl Explorer {
             git_poll_task: None,
             disk_usage_settings,
             disk_usage: None,
+            search_settings,
+            search: None,
         };
         this.enter_directory(cx);
         this
@@ -177,6 +183,7 @@ impl Explorer {
         show_hidden: bool,
         git_settings: GitSettings,
         disk_usage_settings: DiskUsageSettings,
+        search_settings: SearchSettings,
         shared: Entity<shared_state::SharedState>,
         startup: Startup,
     ) -> Self {
@@ -187,6 +194,7 @@ impl Explorer {
             show_hidden,
             git_settings,
             disk_usage_settings,
+            search_settings,
             shared,
         );
 
@@ -208,7 +216,9 @@ impl Explorer {
 
 impl Render for Explorer {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if self.disk_usage.is_some() {
+        if self.search.is_some() {
+            ui::search_panel::render(self, window, cx).into_any_element()
+        } else if self.disk_usage.is_some() {
             ui::disk_usage::render_panel(self, window, cx).into_any_element()
         } else {
             self.render_browser(window, cx).into_any_element()
@@ -277,6 +287,9 @@ impl Explorer {
             }))
             .on_action(cx.listener(|explorer, _: &keys::NewFile, window, cx| {
                 explorer.begin_new_file(window, cx)
+            }))
+            .on_action(cx.listener(|explorer, _: &keys::OpenSearch, window, cx| {
+                explorer.open_search_tab(window, cx)
             }))
             .size_full()
             .relative()

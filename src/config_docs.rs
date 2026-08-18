@@ -7,7 +7,7 @@ pub struct ConfigDoc {
     pub body: &'static str,
 }
 
-pub const SECTIONS: &[&str] = &["General", "Sidebar", "Theme", "Git"];
+pub const SECTIONS: &[&str] = &["General", "Sidebar", "Theme", "Git", "Search"];
 
 pub const CONFIG_DOCS: &[ConfigDoc] = &[
     ConfigDoc {
@@ -251,6 +251,58 @@ be picked up until you navigate away and back).",
         default: "null",
         body: "If the status listing has more entries than this, skip decorating rather \
 than render a huge repo's worth of badges.",
+    },
+    ConfigDoc {
+        key: "search.max_results",
+        section: "Search",
+        summary: "Cap on how many matches/files Ctrl+F search shows at once.",
+        type_hint: "number",
+        default: "500",
+        body: "Once this many results have been found, the search stops collecting more and \
+shows a \"refine your search\" hint instead.",
+    },
+    ConfigDoc {
+        key: "search.default_case",
+        section: "Search",
+        summary: "Default case-sensitivity mode when opening the search panel.",
+        type_hint: "\"sensitive\" | \"insensitive\" | \"smart\"",
+        default: "\"smart\"",
+        body: "Smart case matches case-insensitively unless the query contains an uppercase \
+letter, matching ripgrep's own --smart-case behavior. Can still be cycled per-search from the \
+panel.",
+    },
+    ConfigDoc {
+        key: "search.respect_gitignore",
+        section: "Search",
+        summary: "Whether Ctrl+F search skips .gitignore'd files by default.",
+        type_hint: "bool",
+        default: "true",
+        body: "Can still be toggled per-search from the panel.",
+    },
+    ConfigDoc {
+        key: "search.include_hidden",
+        section: "Search",
+        summary: "Whether Ctrl+F search includes dotfiles by default.",
+        type_hint: "bool",
+        default: "false",
+        body: "Can still be toggled per-search from the panel.",
+    },
+    ConfigDoc {
+        key: "search.cli.binary_path",
+        section: "Search",
+        summary: "Override the ripgrep (rg) binary used.",
+        type_hint: "string",
+        default: "null",
+        body: "Defaults to whatever rg resolves to on PATH. Ctrl+F search does nothing useful \
+without ripgrep installed.",
+    },
+    ConfigDoc {
+        key: "search.cli.timeout_ms",
+        section: "Search",
+        summary: "Kill and ignore a search if it takes longer than this.",
+        type_hint: "number",
+        default: "5000",
+        body: "",
     },
 ];
 
